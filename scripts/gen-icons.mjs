@@ -1,0 +1,25 @@
+// Generates PWA icons using @resvg/resvg-js (pure Wasm, no native deps)
+// Usage: node scripts/gen-icons.mjs
+import { writeFileSync, mkdirSync } from 'fs'
+import { Resvg } from '@resvg/resvg-js'
+
+const SVG = `<svg width="512" height="512" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="64" height="64" rx="14" fill="#0f172a"/>
+  <ellipse cx="36" cy="42" rx="22" ry="16" fill="#0d9488"/>
+  <circle cx="22" cy="26" r="14" fill="#0d9488"/>
+  <ellipse cx="5" cy="31" rx="11" ry="5" fill="#5eead4"/>
+  <ellipse cx="8" cy="29.5" rx="1.5" ry="1" fill="#0f766e"/>
+  <circle cx="17" cy="22" r="3" fill="#0f172a"/>
+  <circle cx="16" cy="21" r="1" fill="white"/>
+  <path d="M56 36 Q64 22 58 12" stroke="#0f766e" stroke-width="4" stroke-linecap="round" fill="none"/>
+  <path d="M56 36 Q62 28 60 18" stroke="#14b8a6" stroke-width="2" stroke-linecap="round" fill="none"/>
+</svg>`
+
+mkdirSync('public/icons', { recursive: true })
+
+for (const size of [192, 512]) {
+  const resvg = new Resvg(SVG, { fitTo: { mode: 'width', value: size } })
+  const png = resvg.render().asPng()
+  writeFileSync(`public/icons/icon-${size}.png`, png)
+  console.log(`✓ icon-${size}.png`)
+}
