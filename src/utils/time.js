@@ -36,3 +36,9 @@ export function formatMonthLabel(dateStr) {
     month: 'short', year: '2-digit',
   })
 }
+
+export function formatTimeOfDay(ts) {
+  return new Date(ts).toLocaleTimeString(undefined, {
+    hour: 'numeric', minute: '2-digit', hour12: true,
+  })
+}

@@ -1,7 +1,7 @@
 <script>
   import { projects, clients, view } from '../../store/index.js'
   import { deleteEntry, updateEntryDuration, startTimer } from '../../store/actions.js'
-  import { formatDuration } from '../../utils/time.js'
+  import { formatDuration, formatTimeOfDay } from '../../utils/time.js'
   import { computeCost, formatCurrency } from '../../utils/money.js'
   import { Trash2, Play, Pencil, Check, X } from 'lucide-svelte'
 
@@ -50,8 +50,13 @@
 
   <div class="flex-1 min-w-0">
     <p class="text-sm text-slate-300 truncate">{project?.name ?? '—'}</p>
-    {#if entry.notes && !editing}
-      <p class="text-xs text-slate-500 truncate">{entry.notes}</p>
+    {#if !editing}
+      <p class="text-xs text-slate-500 tabular-nums">
+        {formatTimeOfDay(entry.startedAt)} – {formatTimeOfDay(entry.stoppedAt)}
+      </p>
+      {#if entry.notes}
+        <p class="text-xs text-slate-500 truncate">{entry.notes}</p>
+      {/if}
     {/if}
   </div>
 
