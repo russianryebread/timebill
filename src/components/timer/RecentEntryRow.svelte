@@ -22,8 +22,9 @@
   let draftM = 0
 
   function startEdit() {
-    draftH = Math.floor(entry.durationSeconds / 3600)
-    draftM = Math.floor((entry.durationSeconds % 3600) / 60)
+    const totalMinutes = Math.ceil(entry.durationSeconds / 60)
+    draftH = Math.floor(totalMinutes / 60)
+    draftM = totalMinutes % 60
     editing = true
   }
 
