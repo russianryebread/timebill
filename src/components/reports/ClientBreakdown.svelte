@@ -1,7 +1,9 @@
 <script>
   import { clientTotals } from '../../store/derived.js'
+  import { entries, invoiceClientId } from '../../store/index.js'
   import { formatHours } from '../../utils/time.js'
   import { formatCurrency } from '../../utils/money.js'
+  import { FileText } from 'lucide-svelte'
 
   const COLOR_MAP = {
     teal: 'bg-teal-500', violet: 'bg-violet-500', rose: 'bg-rose-500',
@@ -10,7 +12,11 @@
   }
 
   $: totalSeconds = $clientTotals.reduce((s, r) => s + r.seconds, 0)
-  $: totalCost = $clientTotals.reduce((s, r) => s + r.cost, 0)
+  $: totalCost    = $clientTotals.reduce((s, r) => s + r.cost, 0)
+
+  function hasUninvoiced(clientId) {
+    return $entries.some(e => e.clientId === clientId && !e.archived)
+  }
 </script>
 
 <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
@@ -32,6 +38,16 @@
               <p class="text-xs text-teal-400">{formatCurrency(row.cost)}</p>
             {/if}
           </div>
+          {#if hasUninvoiced(row.client.id)}
+            <button
+              on:click={() => invoiceClientId.set(row.client.id)}
+              class="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium
+                     text-slate-400 hover:text-white hover:bg-slate-700 transition-colors ml-1"
+              title="Generate invoice"
+            >
+              <FileText size={13}/> Invoice
+            </button>
+          {/if}
         </div>
       {/each}
     </div>

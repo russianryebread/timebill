@@ -14,7 +14,7 @@
   })
   onDestroy(() => clearInterval(interval))
 
-  $: recentEntries = $entries.slice(0, 30)
+  $: recentEntries = $entries.filter(e => !e.archived).slice(0, 30)
   $: recentDates = [...new Set(recentEntries.map(e => e.date))].slice(0, 7)
 </script>
 

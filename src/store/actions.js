@@ -54,6 +54,20 @@ export function updateEntry(entryId, patch) {
   entries.update(es => es.map(e => e.id === entryId ? { ...e, ...patch } : e))
 }
 
+export function updateEntryDuration(entryId, durationSeconds) {
+  entries.update(es => es.map(e =>
+    e.id === entryId
+      ? { ...e, durationSeconds, stoppedAt: e.startedAt + durationSeconds * 1000 }
+      : e
+  ))
+}
+
+export function archiveEntriesForClient(clientId) {
+  entries.update(es => es.map(e =>
+    e.clientId === clientId && !e.archived ? { ...e, archived: true } : e
+  ))
+}
+
 // ── Clients ──────────────────────────────────────────────────────────────────
 
 export function addClient(data) {
