@@ -1,43 +1,74 @@
-# Svelte + Vite
+<img src="logo/header.svg" alt="TimeBill" />
 
-This template should help get you started developing with Svelte in Vite.
+A lightweight, privacy-first time tracking PWA for freelancers and consultants. Track hours across clients and projects, visualize your day, generate invoices, and monitor monthly budgets — all in the browser with no server required.
 
-## Recommended IDE Setup
+---
 
-[VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode).
+## Features
 
-## Need an official Svelte framework?
+- **Live timers** — run multiple timers simultaneously, restart past entries with one click
+- **Day timeline** — proportional visualization of your time blocks across each day
+- **Cost tracking** — per-project hourly rates compute earnings in real time
+- **Monthly budgets** — progress bars warn at 80% and 100% of hour budgets
+- **Invoicing** — printable per-client invoices with automatic entry archival
+- **Reports** — daily bar chart, project and client breakdowns, CSV export
+- **Works offline** — installable PWA backed entirely by localStorage; no account needed
 
-Check out [SvelteKit](https://github.com/sveltejs/kit#readme), which is also powered by Vite. Deploy anywhere with its serverless-first approach and adapt to various platforms, with out of the box support for TypeScript, SCSS, and Less, and easily-added support for mdsvex, GraphQL, PostCSS, Tailwind CSS, and more.
+## Stack
 
-## Technical considerations
+| Layer | Choice |
+|---|---|
+| UI | Svelte 5 + Vite |
+| Styling | Tailwind CSS 3 |
+| State | svelte-persisted-store (localStorage) |
+| Charts | Chart.js 4 |
+| Icons | lucide-svelte |
+| PWA | vite-plugin-pwa |
 
-**Why use this over SvelteKit?**
+## Getting Started
 
-- It brings its own routing solution which might not be preferable for some users.
-- It is first and foremost a framework that just happens to use Vite under the hood, not a Vite app.
-
-This template contains as little as possible to get started with Vite + Svelte, while taking into account the developer experience with regards to HMR and intellisense. It demonstrates capabilities on par with the other `create-vite` templates and is a good starting point for beginners dipping their toes into a Vite + Svelte project.
-
-Should you later need the extended capabilities and extensibility provided by SvelteKit, the template has been structured similarly to SvelteKit so that it is easy to migrate.
-
-**Why include `.vscode/extensions.json`?**
-
-Other templates indirectly recommend extensions via the README, but this file allows VS Code to prompt the user to install the recommended extension upon opening the project.
-
-**Why enable `checkJs` in the JS template?**
-
-It is likely that most cases of changing variable types in runtime are likely to be accidental, rather than deliberate. This provides advanced typechecking out of the box. Should you like to take advantage of the dynamically-typed nature of JavaScript, it is trivial to change the configuration.
-
-**Why is HMR not preserving my local component state?**
-
-HMR state preservation comes with a number of gotchas! It has been disabled by default in both `svelte-hmr` and `@sveltejs/vite-plugin-svelte` due to its often surprising behavior. You can read the details [here](https://github.com/sveltejs/svelte-hmr/tree/master/packages/svelte-hmr#preservation-of-local-state).
-
-If you have state that's important to retain within a component, consider creating an external store which would not be replaced by HMR.
-
-```js
-// store.js
-// An extremely simple external store
-import { writable } from 'svelte/store'
-export default writable(0)
+```bash
+npm install
+npm run dev
 ```
+
+Open [http://localhost:5274](http://localhost:5274).
+
+```bash
+npm run build   # production build → dist/
+npm run preview # preview the production build locally
+```
+
+## Data Model
+
+All data lives in `localStorage` under four keys:
+
+| Key | Contents |
+|---|---|
+| `tb_clients` | Client name + color swatch |
+| `tb_projects` | Project name, hourly rate, monthly hour budget |
+| `tb_entries` | Completed time entries with start/stop timestamps |
+| `tb_active_timers` | In-progress timers (elapsed computed from `startedAt`) |
+
+## Project Structure
+
+```
+src/
+├── components/
+│   ├── layout/        AppShell, NavBar, Drawer
+│   ├── timer/         TimerCard, TimerList, DayTimeline, RecentEntryRow
+│   ├── reports/       Charts, breakdowns, invoice modal, CSV export
+│   └── settings/      Client and project CRUD forms
+├── store/
+│   ├── index.js       Persisted + ephemeral Svelte stores
+│   ├── actions.js     startTimer, stopTimer, CRUD, archival
+│   └── derived.js     Computed daily/project/client totals
+└── utils/
+    ├── time.js        Duration and date formatting
+    ├── money.js       Cost computation and currency formatting
+    └── colors.js      Shared client color map
+```
+
+## License
+
+MIT
