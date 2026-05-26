@@ -1,11 +1,32 @@
 import PocketBase from 'pocketbase';
 import { browser } from '$app/environment';
 
-const PB_URL = browser
-  ? (localStorage.getItem('pb_url') ?? `${window.location.protocol}//${window.location.hostname}:8090`)
-  : 'http://127.0.0.1:8090';
+/**
+ * Resolve the PocketBase base URL:
+ *  - SSR  → 127.0.0.1:8090 (build-time only; we use adapter-static).
+ *  - Browser (web served by PB on the same origin) → window.location origin.
+ *  - Tauri shell → 127.0.0.1:8090 (the webview's origin is `tauri://` which
+ *    isn't a real network host). Per-install override via `localStorage.pb_url`
+ *    so the user can point the desktop app at a remote PocketBase later.
+ */
+function resolvePbUrl(): string {
+  if (!browser) return 'http://127.0.0.1:8090';
+  const override = localStorage.getItem('pb_url');
+  if (override) return override;
+  const proto = window.location.protocol;
+  // Tauri's webview serves from `tauri://...` (or `https://tauri.localhost`).
+  // Either way, fetches need a real network host — default to localhost PB.
+  const isTauri =
+    typeof (window as any).__TAURI__ !== 'undefined' ||
+    typeof (window as any).__TAURI_INTERNALS__ !== 'undefined' ||
+    proto === 'tauri:' ||
+    proto === 'tauri-http:';
+  if (isTauri) return 'http://127.0.0.1:8090';
+  // Web build served by PocketBase itself — same origin.
+  return `${proto}//${window.location.hostname}:${window.location.port || 8090}`;
+}
 
-export const pb = new PocketBase(PB_URL);
+export const pb = new PocketBase(resolvePbUrl());
 
 pb.autoCancellation(false);
 
