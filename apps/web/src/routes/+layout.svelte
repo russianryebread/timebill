@@ -41,11 +41,24 @@
     }
   });
 
-  onMount(() => {
+  onMount(async () => {
     if (auth.isLoggedIn) workspace.load();
     // Hooks up the Tauri `idle-detected` event listener — silently no-ops
     // outside the Tauri shell, so safe to call in the web build.
     idle.init();
+
+    // In the Tauri menubar window, redirect to /menubar. (adapter-static's
+    // SPA fallback always serves index.html, so the Tauri `url: "/menubar"`
+    // config lands here at `/` instead of the menubar route.)
+    if (typeof (window as any).__TAURI_INTERNALS__ !== 'undefined') {
+      try {
+        const { getCurrentWindow } = await import('@tauri-apps/api/window');
+        const label = getCurrentWindow().label;
+        if (label === 'menubar' && !$page.url.pathname.startsWith('/menubar')) {
+          goto('/menubar');
+        }
+      } catch (_) {}
+    }
   });
 
   onDestroy(() => {
