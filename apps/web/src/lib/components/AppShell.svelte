@@ -18,7 +18,7 @@
     { href: '/expenses', label: 'Expenses', icon: 'icon-[ph--currency-dollar-duotone]' },
     { href: '/invoices', label: 'Invoices', icon: 'icon-[ph--file-text-duotone]' },
     { href: '/reports', label: 'Reports', icon: 'icon-[ph--chart-bar-duotone]' },
-    { href: '/settings/tasks', label: 'Settings', icon: 'icon-[ph--gear-duotone]' }
+    { href: '/settings/workspace', label: 'Settings', icon: 'icon-[ph--gear-duotone]' }
   ];
 
   function isActive(href: string) {

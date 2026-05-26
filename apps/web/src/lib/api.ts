@@ -323,33 +323,48 @@ export const api = {
     return pb.collection('invoice_line_items').delete(id);
   },
 
-  async listUnbilledTimeForClient(clientId: string) {
+  async listUnbilledTimeForClient(
+    clientId: string,
+    range?: { fromPb: string; toPb: string }
+  ) {
     const projects = await pb.collection('projects').getFullList({
       filter: `workspace = "${workspace.current!.id}" && client = "${clientId}"`
     });
     if (!projects.length) return [];
-    const projectIds = projects.map((p) => `"${p.id}"`).join(',');
-    const projFilter = `project ?~ '${projectIds.replace(/"/g, '')}'`;
-    // Use individual project filters since `?~` quotes are tricky
     const orProjects = projects.map((p) => `project = "${p.id}"`).join(' || ');
+    const rangeClause = range
+      ? ` && started_at >= "${range.fromPb}" && started_at < "${range.toPb}"`
+      : '';
     return pb.collection('time_entries').getFullList({
-      filter: `workspace = "${workspace.current!.id}" && invoice = "" && ended_at != "" && billable = true && (${orProjects})`,
+      filter: `workspace = "${workspace.current!.id}" && invoice = "" && ended_at != "" && billable = true && (${orProjects})${rangeClause}`,
       sort: '-started_at',
       expand: 'project,task'
     });
   },
 
-  async listUnbilledExpensesForClient(clientId: string) {
+  async listUnbilledExpensesForClient(
+    clientId: string,
+    range?: { fromPb: string; toPb: string }
+  ) {
+    const rangeClause = range
+      ? ` && date >= "${range.fromPb}" && date < "${range.toPb}"`
+      : '';
     return pb.collection('expenses').getFullList({
-      filter: `workspace = "${workspace.current!.id}" && invoice = "" && billable = true && client = "${clientId}"`,
+      filter: `workspace = "${workspace.current!.id}" && invoice = "" && billable = true && client = "${clientId}"${rangeClause}`,
       sort: '-date',
       expand: 'category,project'
     });
   },
 
-  async listUnbilledMileageForClient(clientId: string) {
+  async listUnbilledMileageForClient(
+    clientId: string,
+    range?: { fromPb: string; toPb: string }
+  ) {
+    const rangeClause = range
+      ? ` && date >= "${range.fromPb}" && date < "${range.toPb}"`
+      : '';
     return pb.collection('mileage_entries').getFullList({
-      filter: `workspace = "${workspace.current!.id}" && invoice = "" && billable = true && client = "${clientId}"`,
+      filter: `workspace = "${workspace.current!.id}" && invoice = "" && billable = true && client = "${clientId}"${rangeClause}`,
       sort: '-date'
     });
   },

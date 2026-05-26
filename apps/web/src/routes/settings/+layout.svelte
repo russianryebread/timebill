@@ -3,8 +3,10 @@
   let { children } = $props();
 
   const tabs = [
+    { href: '/settings/workspace', label: 'Workspace' },
     { href: '/settings/tasks', label: 'Activity types' },
-    { href: '/settings/billing', label: 'Billing' }
+    { href: '/settings/billing', label: 'Billing' },
+    { href: '/settings/import', label: 'Import' }
   ];
 
   function isActive(href: string) {

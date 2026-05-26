@@ -2,8 +2,10 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { api } from '$lib/api';
+  import { pb, toPbDate } from '$lib/pb';
   import { workspace } from '$lib/workspace.svelte';
-  import { formatUSD } from '@timebill/shared/money';
+  import { formatUSD, formatHours, hoursDecimal } from '@timebill/shared/money';
+  import { roundHours } from '@timebill/shared/invoice';
 
   type ClientLite = { id: string; name: string };
   type InvoiceRow = {
@@ -22,6 +24,14 @@
   let loading = $state(true);
   let error = $state('');
   let showCreate = $state(false);
+  let showGenerate = $state(false);
+  let generating = $state(false);
+  let genError = $state('');
+
+  let genForm = $state({
+    client: '',
+    month: new Date().toISOString().slice(0, 7) // YYYY-MM
+  });
 
   let statusFilter = $state<'' | 'draft' | 'sent' | 'viewed' | 'paid' | 'overdue'>('');
 
@@ -67,6 +77,107 @@
       goto(`/invoices/${inv.id}`);
     } catch (err) {
       error = err instanceof Error ? err.message : 'Failed to create';
+    }
+  }
+
+  /**
+   * Generate a draft invoice from every unbilled time entry, expense, and
+   * mileage entry for the chosen client in the chosen month. Applies billing
+   * rounding to time entries. Navigates to the new draft.
+   */
+  async function generateFromMonth(e: SubmitEvent) {
+    e.preventDefault();
+    genError = '';
+    generating = true;
+    try {
+      const [yStr, mStr] = genForm.month.split('-');
+      const y = Number(yStr);
+      const m = Number(mStr) - 1; // 0-11
+      const monthStart = new Date(y, m, 1);
+      const monthEnd = new Date(y, m + 1, 1);
+      const issueDate = new Date(y, m + 1, 0).toISOString().slice(0, 10); // last day of month
+      const dueDate = new Date(y, m + 1, 30).toISOString().slice(0, 10); // ~30 days
+
+      const range = { fromPb: toPbDate(monthStart), toPb: toPbDate(monthEnd) };
+      const [times, exps, miles] = await Promise.all([
+        api.listUnbilledTimeForClient(genForm.client, range),
+        api.listUnbilledExpensesForClient(genForm.client, range),
+        api.listUnbilledMileageForClient(genForm.client, range)
+      ]);
+
+      if (!times.length && !exps.length && !miles.length) {
+        genError = `Nothing unbilled for that client in ${genForm.month}.`;
+        return;
+      }
+
+      const inv = await api.createDraftInvoice({
+        client: genForm.client,
+        issue_date: issueDate,
+        due_date: dueDate,
+        notes: `Generated from ${monthStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}.`
+      });
+
+      const rounding = workspace.current?.billing_rounding_minutes ?? 0;
+      const clientDefaultRate = clients.find((c) => c.id === genForm.client) as unknown as { default_rate_cents?: number } | undefined;
+      let order = 0;
+
+      for (const t of times as any[]) {
+        const ms = new Date(t.ended_at).getTime() - new Date(t.started_at).getTime();
+        const actualHours = Math.max(0, hoursDecimal(ms));
+        const billedHours = roundHours(actualHours, rounding);
+        const rate =
+          t.rate_cents_snapshot ??
+          t.expand?.project?.rate_cents ??
+          clientDefaultRate?.default_rate_cents ??
+          0;
+        await api.addLineItem({
+          invoice: inv.id,
+          description: `${t.expand?.project?.name ?? 'Time'}${t.expand?.task ? ` — ${t.expand.task.name}` : ''}${t.description ? ` · ${t.description}` : ''} (${formatHours(ms)} actual)`,
+          quantity: billedHours,
+          unit_price_cents: rate,
+          source: 'time_entry',
+          source_id: t.id,
+          sort_order: order++
+        });
+        await api.markTimeEntryBilled(t.id, inv.id);
+      }
+
+      for (const ex of exps as any[]) {
+        await api.addLineItem({
+          invoice: inv.id,
+          description: `${ex.vendor || ex.expand?.category?.name || 'Expense'}${ex.description ? ` · ${ex.description}` : ''}`,
+          quantity: 1,
+          unit_price_cents: ex.amount_cents,
+          source: 'expense',
+          source_id: ex.id,
+          sort_order: order++
+        });
+        await api.markExpenseBilled(ex.id, inv.id);
+      }
+
+      for (const mi of miles as any[]) {
+        await api.addLineItem({
+          invoice: inv.id,
+          description: `Mileage — ${mi.purpose || 'travel'}`,
+          quantity: mi.miles,
+          unit_price_cents: mi.rate_cents_snapshot,
+          source: 'mileage',
+          source_id: mi.id,
+          sort_order: order++
+        });
+        await api.markMileageBilled(mi.id, inv.id);
+      }
+
+      // Recompute totals on the freshly populated invoice.
+      const lines = await api.listLineItems(inv.id);
+      const subtotal = (lines as any[]).reduce((s, l) => s + l.amount_cents, 0);
+      await api.updateInvoice(inv.id, { subtotal_cents: subtotal, total_cents: subtotal });
+
+      goto(`/invoices/${inv.id}`);
+    } catch (err) {
+      genError = err instanceof Error ? err.message : 'Generation failed';
+    } finally {
+      generating = false;
     }
   }
 
@@ -116,13 +227,26 @@
       <h1 class="text-2xl font-bold text-slate-900">Invoices</h1>
       <p class="mt-1 text-sm text-slate-600">Draft, send, and track client payments.</p>
     </div>
-    <button
-      class="rounded-md bg-brand-800 px-4 py-2 text-sm font-medium text-white hover:bg-brand-900 disabled:opacity-50"
-      onclick={() => (showCreate = true)}
-      disabled={clients.length === 0}
-    >
-      + New invoice
-    </button>
+    <div class="flex gap-2">
+      <button
+        class="flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+        onclick={() => {
+          if (!genForm.client && clients.length) genForm.client = clients[0]!.id;
+          showGenerate = true;
+        }}
+        disabled={clients.length === 0}
+      >
+        <span class="icon-[ph--calendar-plus-duotone] text-base" aria-hidden="true"></span>
+        Generate from month…
+      </button>
+      <button
+        class="rounded-md bg-brand-800 px-4 py-2 text-sm font-medium text-white hover:bg-brand-900 disabled:opacity-50"
+        onclick={() => (showCreate = true)}
+        disabled={clients.length === 0}
+      >
+        + New invoice
+      </button>
+    </div>
   </div>
 
   <section class="mt-5 grid gap-3 sm:grid-cols-2">
@@ -276,6 +400,67 @@
           class="rounded bg-brand-800 px-4 py-2 text-sm font-medium text-white hover:bg-brand-900"
         >
           Create draft
+        </button>
+      </div>
+    </form>
+  </div>
+{/if}
+
+{#if showGenerate}
+  <div class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 p-4" role="dialog">
+    <form
+      onsubmit={generateFromMonth}
+      class="w-full max-w-md space-y-4 rounded-xl bg-white p-6 shadow-xl"
+    >
+      <h2 class="text-lg font-semibold text-slate-900">Generate invoice from month</h2>
+      <p class="text-sm text-slate-600">
+        Pulls every unbilled <strong>time entry</strong>, <strong>expense</strong>,
+        and <strong>mileage entry</strong> for this client in the chosen month
+        into a new draft. Applies your billing-rounding setting to time.
+      </p>
+
+      <label class="block">
+        <span class="text-sm text-slate-700">Client</span>
+        <select
+          required
+          bind:value={genForm.client}
+          class="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+        >
+          {#each clients as c}
+            <option value={c.id}>{c.name}</option>
+          {/each}
+        </select>
+      </label>
+
+      <label class="block">
+        <span class="text-sm text-slate-700">Month</span>
+        <input
+          type="month"
+          required
+          bind:value={genForm.month}
+          class="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+        />
+      </label>
+
+      {#if genError}
+        <p class="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{genError}</p>
+      {/if}
+
+      <div class="flex justify-end gap-2 pt-1">
+        <button
+          type="button"
+          class="rounded px-4 py-2 text-sm text-slate-600 hover:bg-slate-100"
+          onclick={() => (showGenerate = false)}
+          disabled={generating}
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          class="rounded bg-brand-800 px-4 py-2 text-sm font-medium text-white hover:bg-brand-900 disabled:opacity-50"
+          disabled={generating}
+        >
+          {generating ? 'Generating…' : 'Generate draft'}
         </button>
       </div>
     </form>

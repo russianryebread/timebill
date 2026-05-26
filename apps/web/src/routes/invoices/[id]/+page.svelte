@@ -207,6 +207,43 @@
     await reload();
   }
 
+  /**
+   * Select every item in the active panel tab. Wires into the existing
+   * `selected[]` map so the existing addSelected* functions handle the
+   * actual addition.
+   */
+  function selectAllInTab() {
+    const next = { ...selected };
+    if (activeTab === 'time') {
+      for (const e of unbilledTime) next[`time-${e.id}`] = true;
+    } else if (activeTab === 'expense') {
+      for (const e of unbilledExpenses) next[`exp-${e.id}`] = true;
+    } else {
+      for (const e of unbilledMileage) next[`mile-${e.id}`] = true;
+    }
+    selected = next;
+  }
+
+  function clearTabSelection() {
+    const next = { ...selected };
+    if (activeTab === 'time') {
+      for (const e of unbilledTime) delete next[`time-${e.id}`];
+    } else if (activeTab === 'expense') {
+      for (const e of unbilledExpenses) delete next[`exp-${e.id}`];
+    } else {
+      for (const e of unbilledMileage) delete next[`mile-${e.id}`];
+    }
+    selected = next;
+  }
+
+  /** "Add all" — select everything in this tab and add immediately. */
+  async function addAllInTab() {
+    selectAllInTab();
+    if (activeTab === 'time') await addSelectedTime();
+    else if (activeTab === 'expense') await addSelectedExpenses();
+    else await addSelectedMileage();
+  }
+
   async function addManual(e: SubmitEvent) {
     e.preventDefault();
     saveError = '';
@@ -620,9 +657,23 @@
 
       <!-- Side panel: pull unbilled -->
       {#if invoice.status === 'draft'}
+        {@const tabCount = activeTab === 'time'
+          ? unbilledTime.length
+          : activeTab === 'expense'
+            ? unbilledExpenses.length
+            : unbilledMileage.length}
         <aside class="overflow-hidden rounded-xl border border-slate-200 bg-white">
-          <div class="border-b border-slate-100 px-4 py-3 text-sm font-medium text-slate-700">
-            Pull unbilled
+          <div class="flex items-center justify-between border-b border-slate-100 px-4 py-3 text-sm">
+            <span class="font-medium text-slate-700">Pull unbilled</span>
+            {#if tabCount > 0}
+              <button
+                class="flex items-center gap-1 rounded bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-800 hover:bg-brand-200"
+                onclick={addAllInTab}
+              >
+                <span class="icon-[ph--stack-plus-duotone] text-sm" aria-hidden="true"></span>
+                Add all ({tabCount})
+              </button>
+            {/if}
           </div>
           <div class="flex gap-1 border-b border-slate-100 bg-slate-50 px-2 py-1 text-xs">
             {#each [['time', 'Time'], ['expense', 'Expenses'], ['mileage', 'Mileage']] as [v, l]}
