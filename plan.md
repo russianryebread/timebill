@@ -526,3 +526,86 @@ Vite on 5173 and opens the Mac app pointed at it. PocketBase still
 needs to run separately (`npm run dev:pb`). `npm run build:desktop`
 produces the `.app` + `.dmg` under
 `apps/desktop/src-tauri/target/release/bundle/`.
+
+---
+
+## Phase 10 (in progress) — Quarterly self-employment tax estimator
+
+The plan called for this as "Phase 8," but Phases 8 (Tauri scaffold) and 9
+(Toggl import) were already in flight, so this lands as Phase 10. Same
+scope: turn the `tax.ts` skeleton into a working SE-tax estimator and
+surface it as a top-level page.
+
+### 10.1 Tax math (`packages/shared/src/tax.ts`)
+
+Pure functions, all in cents:
+
+- `selfEmploymentTax(netSEIncomeCents)` — 15.3% on 92.35% of net SE
+  earnings, SS portion capped at the annual wage base
+  (`SS_WAGE_BASE_CENTS_2026 = 17_700_000` placeholder). Medicare is
+  uncapped; the 0.9% Medicare surtax on high earners is intentionally
+  out of scope. Returns 0 for non-positive income.
+- `federalIncomeTax(taxableIncomeCents, filingStatus)` — applies the
+  2025-placeholder standard deduction for the chosen status, then
+  bracketed marginal tax. Brackets live in a single `BRACKETS_2025`
+  table covering all four `FilingStatus` values; update yearly. A
+  legacy `estimatedFederalIncomeTax` shim still re-exports the same
+  thing.
+- `qbiDeduction(netSEIncomeCents, preQbiTaxableIncomeCents?)` — 20%
+  of net SE income minus the employer-half of SE tax, optionally
+  capped at 20% of pre-QBI taxable income. Simplification: no W-2
+  wage limit, no SSTB phaseout. Documented in-source.
+- `estimateAnnualTax({ netSEIncomeCents, filingStatus,
+  otherIncomeCents?, estimatedDeductionsCents? })` →
+  `{ seTax, federalIncomeTax, qbi, totalTax, effectiveRate }`. The
+  headline number on the page.
+- `quarterlyEstimate(annualTaxOwed, quarter)` — straight ÷ 4.
+- `safeHarborTarget(priorYearTax, currentAGI)` — 100% of prior-year
+  tax, or 110% if current AGI > $150,000.
+- `quarterDueDate(year, quarter)` → `Date` for Apr 15 / Jun 15 /
+  Sep 15 / Jan 15 (next year). UTC noon to dodge timezone slippage.
+
+`packages/shared/src/tax.test.ts` covers all of the above with
+`node --test`. Because the repo doesn't have `tsx`/`ts-node`, the
+package's `test` script uses Node 22's
+`--experimental-strip-types` flag and imports use explicit
+`./tax.ts` extensions so strip-types can resolve them.
+
+### 10.2 Tax page (`apps/web/src/routes/tax/+page.svelte`)
+
+A top-level `/tax` page styled after `/reports` (max-w-6xl, rounded
+cards, brand-800 mono numbers).
+
+- **YTD aggregations** for the current year:
+  - Billable revenue = sum of `duration * rate_cents_snapshot` for
+    completed billable time entries.
+  - Deductible total = all expenses + mileage (miles × snapshot rate).
+  - Net SE income = revenue − deductions.
+- **Filing settings row** at the top: filing status select +
+  estimated other income input + Save button. Persists to
+  `tax_settings` via `api.updateTaxSettings`.
+- **Estimate card** showing SE tax, federal income tax, QBI,
+  total tax, and effective rate from `estimateAnnualTax`.
+- **Quarterly schedule table** with Q1 Apr 15, Q2 Jun 15,
+  Q3 Sep 15, Q4 Jan 15 (next year). Each row shows the
+  `quarterlyEstimate` payment; the next upcoming row is highlighted
+  with a "Next up" pill and brand-50 background, past rows are
+  muted.
+- **Amber disclaimer banner** at the top: "Estimate only — not tax
+  advice. Confirm with a CPA. Brackets reflect 2025 figures pending
+  2026 update. State income tax is not included."
+
+### 10.3 Sidebar nav
+
+`AppShell` gains a `Tax` item between Reports and Settings with the
+literal Tailwind class `icon-[ph--calculator-duotone]`.
+
+### 10.4 Known approximations
+
+- 2025 bracket and standard-deduction numbers are placeholders;
+  swap in 2026 figures when the IRS publishes them.
+- SS wage base of $177,000 is a forward-looking placeholder.
+- QBI ignores W-2 limits and SSTB phaseouts.
+- No state income tax — the `state` field on `tax_settings` is
+  collected but not yet used in the math.
+- Additional 0.9% Medicare surtax on high earners not modeled.
