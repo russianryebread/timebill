@@ -1,6 +1,7 @@
 import { pb } from './pb';
 import { workspace } from './workspace.svelte';
 import { auth } from './auth.svelte';
+import { formatHMS } from '@timebill/shared/money';
 
 export type TimeEntry = {
   id: string;
@@ -50,7 +51,29 @@ class TimerState {
     if (this.tickHandle) return;
     this.tickHandle = setInterval(() => {
       this.now = Date.now();
+      this.pushTrayTitle();
     }, 1000);
+  }
+
+  /**
+   * Push the running timer's elapsed time to the macOS tray title so the user
+   * can glance at the menu bar and see they're tracking. Cleared when no
+   * timer is running. No-op outside Tauri.
+   */
+  private trayTitleLast = '';
+  private async pushTrayTitle() {
+    if (typeof window === 'undefined') return;
+    if (typeof (window as any).__TAURI_INTERNALS__ === 'undefined') return;
+    const next = this.running ? formatHMS(this.elapsedMs) : '';
+    if (next === this.trayTitleLast) return;
+    this.trayTitleLast = next;
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('set_tray_title', { title: next });
+    } catch (_) {
+      // Silently ignore — likely running in the web build or the command
+      // isn't registered (older Tauri build before the title feature shipped).
+    }
   }
 
   private async loadRunning() {

@@ -6,6 +6,22 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Emitter, Manager, PhysicalPosition, Rect, WebviewWindow, WindowEvent,
 };
+
+const TRAY_ID: &str = "timebill-tray";
+
+/// JS-callable: update the menu-bar text shown next to the tray icon.
+/// Pass an empty string to clear it (no running timer).
+#[tauri::command]
+fn set_tray_title(app: AppHandle, title: String) {
+    if let Some(tray) = app.tray_by_id(TRAY_ID) {
+        let value = if title.trim().is_empty() {
+            None
+        } else {
+            Some(title)
+        };
+        let _ = tray.set_title(value.as_deref());
+    }
+}
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 use user_idle::UserIdle;
 
@@ -137,7 +153,7 @@ pub fn run() {
             let quit = MenuItem::with_id(app, "quit", "Quit", true, Some("Cmd+Q"))?;
             let menu = Menu::with_items(app, &[&show_main, &quit])?;
 
-            let _tray = TrayIconBuilder::with_id("timebill-tray")
+            let _tray = TrayIconBuilder::with_id(TRAY_ID)
                 .icon(app.default_window_icon().unwrap().clone())
                 .icon_as_template(true)
                 .menu(&menu)
@@ -170,7 +186,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![])
+        .invoke_handler(tauri::generate_handler![set_tray_title])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

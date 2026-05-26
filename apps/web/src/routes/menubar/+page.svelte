@@ -165,7 +165,8 @@
   });
 </script>
 
-<div class="flex h-screen flex-col overflow-hidden rounded-xl bg-white shadow-xl">
+<div class="h-screen w-screen p-2">
+  <div class="flex h-full w-full flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-200/60">
   <!-- Orange-style banded header (themed) -->
   <header class="bg-brand-800 px-4 py-3 text-white">
     <div class="flex items-center justify-between text-sm">
@@ -280,6 +281,7 @@
       Open app
     </button>
   </footer>
+  </div>
 </div>
 
 <style>
