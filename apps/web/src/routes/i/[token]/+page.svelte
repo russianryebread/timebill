@@ -25,6 +25,8 @@
       pdf: string;
       public_token: string;
       workspace: string;
+      paid_cents?: number;
+      balance_cents?: number;
     };
     workspace: { name: string } | null;
     client: { name: string; email: string; address: string } | null;
@@ -91,7 +93,16 @@
             <div class="flex items-center gap-3">
               <img src="/logo.png" alt="" class="h-12 w-12 shrink-0 rounded-md bg-white p-1" />
               <div>
-                <div class="text-xs uppercase tracking-wider text-brand-200">Invoice</div>
+                <div class="flex items-center gap-2 text-xs uppercase tracking-wider text-brand-200">
+                  <span>Invoice</span>
+                  {#if (data.invoice.balance_cents ?? data.invoice.total_cents) <= 0 && (data.invoice.paid_cents ?? 0) > 0}
+                    <span class="rounded-full bg-emerald-400/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-200">Paid</span>
+                  {:else if data.invoice.status === 'void'}
+                    <span class="rounded-full bg-slate-500/30 px-2 py-0.5 text-[10px] font-semibold text-slate-100">Void</span>
+                  {:else if data.invoice.status === 'overdue'}
+                    <span class="rounded-full bg-rose-400/20 px-2 py-0.5 text-[10px] font-semibold text-rose-100">Overdue</span>
+                  {/if}
+                </div>
                 <div class="font-mono text-2xl font-bold">{data.invoice.number}</div>
               </div>
             </div>
@@ -158,9 +169,19 @@
                 </div>
               {/if}
               <div class="flex justify-between border-t border-slate-200 pt-1 text-base font-semibold text-brand-800">
-                <span>Total due</span>
+                <span>Total</span>
                 <span class="font-mono">{formatUSD(data.invoice.total_cents)}</span>
               </div>
+              {#if (data.invoice.paid_cents ?? 0) > 0}
+                <div class="flex justify-between text-emerald-700">
+                  <span>Paid</span>
+                  <span class="font-mono">−{formatUSD(data.invoice.paid_cents ?? 0)}</span>
+                </div>
+                <div class="flex justify-between border-t border-slate-200 pt-1 text-base font-semibold {(data.invoice.balance_cents ?? 0) <= 0 ? 'text-emerald-700' : 'text-brand-800'}">
+                  <span>{(data.invoice.balance_cents ?? 0) <= 0 ? 'Balance' : 'Balance due'}</span>
+                  <span class="font-mono">{formatUSD(data.invoice.balance_cents ?? 0)}</span>
+                </div>
+              {/if}
             </div>
           </div>
         </section>

@@ -6,6 +6,7 @@
   import { idle } from '$lib/idle.svelte';
   import AppShell from '$lib/components/AppShell.svelte';
   import IdleReturnModal from '$lib/components/IdleReturnModal.svelte';
+  import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { onMount, onDestroy } from 'svelte';
@@ -75,3 +76,4 @@
 
 <!-- Surfaced everywhere (including the chromeless /menubar route). -->
 <IdleReturnModal />
+<ConfirmDialog />

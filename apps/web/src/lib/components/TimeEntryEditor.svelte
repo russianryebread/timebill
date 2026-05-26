@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { pb } from '$lib/pb';
+  import { confirmAction } from '$lib/confirm.svelte';
 
   type Entry = {
     id: string;
@@ -146,7 +147,11 @@
 
   async function remove() {
     if (locked) return;
-    if (!confirm('Delete this time entry?')) return;
+    if (!(await confirmAction({
+      message: 'Delete this time entry?',
+      detail: 'This permanently removes the entry. You can\'t undo this.',
+      confirmLabel: 'Delete'
+    }))) return;
     await pb.collection('time_entries').delete(initial.id);
     onSaved();
   }

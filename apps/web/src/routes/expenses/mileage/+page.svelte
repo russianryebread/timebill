@@ -3,6 +3,7 @@
   import { api } from '$lib/api';
   import { workspace } from '$lib/workspace.svelte';
   import { formatUSD } from '@timebill/shared/money';
+  import { confirmAction } from '$lib/confirm.svelte';
 
   type ClientLite = { id: string; name: string };
   type ProjectLite = { id: string; name: string };
@@ -89,7 +90,10 @@
   }
 
   async function remove(x: MileageRow) {
-    if (!confirm(`Delete this ${x.miles}-mile entry?`)) return;
+    if (!(await confirmAction({
+      message: `Delete this ${x.miles}-mile entry?`,
+      confirmLabel: 'Delete mileage'
+    }))) return;
     await api.deleteMileage(x.id);
     await load();
   }

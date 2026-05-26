@@ -183,6 +183,22 @@ routerAdd('GET', '/api/timebill/public-invoice/:token', (c) => {
     500
   );
 
+  // Sum recorded payments so the public view can show the balance and a
+  // "Paid" badge when the invoice is settled.
+  let paidCents = 0;
+  try {
+    const payments = dao.findRecordsByFilter(
+      'payments',
+      `invoice = "${invoice.id}"`,
+      '-date',
+      500
+    );
+    for (const p of payments) {
+      const amt = p.get('amount_cents');
+      if (typeof amt === 'number') paidCents += amt;
+    }
+  } catch (_) {}
+
   // Flip sent -> viewed on first view
   if (String(invoice.get('status')) === 'sent') {
     invoice.set('status', 'viewed');
@@ -204,7 +220,9 @@ routerAdd('GET', '/api/timebill/public-invoice/:token', (c) => {
       notes: invoice.get('notes'),
       pdf: invoice.get('pdf'),
       public_token: invoice.get('public_token'),
-      workspace: invoice.get('workspace')
+      workspace: invoice.get('workspace'),
+      paid_cents: paidCents,
+      balance_cents: Math.max(0, (invoice.get('total_cents') || 0) - paidCents)
     },
     workspace,
     client,

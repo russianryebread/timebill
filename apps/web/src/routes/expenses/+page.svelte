@@ -4,6 +4,7 @@
   import { pb } from '$lib/pb';
   import { workspace } from '$lib/workspace.svelte';
   import { formatUSD, parseUSDInput, centsToDollars } from '@timebill/shared/money';
+  import { confirmAction } from '$lib/confirm.svelte';
 
   type Category = { id: string; name: string; schedule_c_line: string };
   type ClientLite = { id: string; name: string };
@@ -159,7 +160,10 @@
   }
 
   async function remove(x: ExpenseRow) {
-    if (!confirm(`Delete this $${centsToDollars(x.amount_cents).toFixed(2)} expense?`)) return;
+    if (!(await confirmAction({
+      message: `Delete this $${centsToDollars(x.amount_cents).toFixed(2)} expense?`,
+      confirmLabel: 'Delete expense'
+    }))) return;
     await api.deleteExpense(x.id);
     await load();
   }

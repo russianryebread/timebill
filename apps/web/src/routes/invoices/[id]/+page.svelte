@@ -8,6 +8,7 @@
   import { formatUSD, formatHours, hoursDecimal, parseUSDInput } from '@timebill/shared/money';
   import { roundHours } from '@timebill/shared/invoice';
   import { renderInvoicePdf } from '$lib/pdf';
+  import { confirmAction } from '$lib/confirm.svelte';
 
   type Invoice = {
     id: string;
@@ -268,7 +269,11 @@
 
   async function removeLine(li: LineItem) {
     if (!invoice) return;
-    if (!confirm('Remove this line?')) return;
+    if (!(await confirmAction({
+      message: 'Remove this line?',
+      detail: 'The source entry will become unbilled again.',
+      confirmLabel: 'Remove line'
+    }))) return;
     // Un-mark the source so it shows up in unbilled again
     if (li.source === 'time_entry' && li.source_id) {
       try { await pb.collection('time_entries').update(li.source_id, { invoice: null }); } catch (_) {}
@@ -392,7 +397,11 @@
 
   async function markVoid() {
     if (!invoice) return;
-    if (!confirm('Void this invoice?')) return;
+    if (!(await confirmAction({
+      message: 'Void this invoice?',
+      detail: 'Voided invoices can no longer be edited or paid.',
+      confirmLabel: 'Void invoice'
+    }))) return;
     await api.updateInvoice(invoice.id, { status: 'void' });
     await load();
   }
@@ -419,7 +428,10 @@
   }
 
   async function deletePayment(p: Payment) {
-    if (!confirm(`Delete payment of ${formatUSD(p.amount_cents)}?`)) return;
+    if (!(await confirmAction({
+      message: `Delete payment of ${formatUSD(p.amount_cents)}?`,
+      confirmLabel: 'Delete payment'
+    }))) return;
     await api.deletePayment(p.id);
     await load();
   }

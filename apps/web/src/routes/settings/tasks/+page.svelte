@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { api } from '$lib/api';
   import { workspace } from '$lib/workspace.svelte';
+  import { confirmAction } from '$lib/confirm.svelte';
   import { formatUSD, parseUSDInput, centsToDollars } from '@timebill/shared/money';
 
   type TaskRow = {
@@ -53,9 +54,11 @@
   }
 
   async function remove(t: TaskRow) {
-    if (!confirm(`Delete task "${t.name}"? Past time entries will keep their rate snapshot.`)) {
-      return;
-    }
+    if (!(await confirmAction({
+      message: `Delete task "${t.name}"?`,
+      detail: 'Past time entries will keep their rate snapshot.',
+      confirmLabel: 'Delete task'
+    }))) return;
     await api.deleteTask(t.id);
     await load();
   }

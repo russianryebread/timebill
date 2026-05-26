@@ -4,6 +4,7 @@
   import { pb } from '$lib/pb';
   import { workspace } from '$lib/workspace.svelte';
   import { formatUSD, parseUSDInput, centsToDollars } from '@timebill/shared/money';
+  import { confirmAction } from '$lib/confirm.svelte';
 
   type Category = { id: string; name: string };
   type RecurringRow = {
@@ -79,7 +80,10 @@
   }
 
   async function remove(r: RecurringRow) {
-    if (!confirm(`Delete recurring "${r.vendor || r.expand?.category?.name}"?`)) return;
+    if (!(await confirmAction({
+      message: `Delete recurring "${r.vendor || r.expand?.category?.name}"?`,
+      confirmLabel: 'Delete recurring'
+    }))) return;
     await api.deleteRecurringExpense(r.id);
     await load();
   }

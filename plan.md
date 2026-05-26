@@ -759,3 +759,76 @@ PB-served build):
    Stop button uses the same `timer.stop()` path and must clear the
    banner without waiting for the realtime tick (regression guard
    for §11.1).
+
+## Phase 12 — Full Chrome walkthrough + Tauri-safe confirm dialogs
+
+### 12.1 In-app confirm dialog
+
+`window.confirm()` is blocked in Tauri's WebView — the call returns
+`undefined` so every `if (!confirm('Delete X?')) return` guard was
+silently cancelling on the desktop build. The user's specific
+report: "deleting a time entry doesn't work from the edit modal."
+
+Fix: replace every `confirm()` callsite with `await confirmAction(...)`
+from a tiny in-app modal store.
+
+- `apps/web/src/lib/confirm.svelte.ts` — `ConfirmState` singleton with
+  a `pending` rune and `ask()`/`resolve()` methods. Public API is
+  `confirmAction(message | options)` returning `Promise<boolean>`.
+- `apps/web/src/lib/components/ConfirmDialog.svelte` — renders the
+  modal whenever `confirmStore.pending` is set. Cancel button,
+  destructive (red) confirm button, click-outside cancels, `Esc`
+  cancels, `Enter` confirms.
+- Mounted once in `src/routes/+layout.svelte` next to
+  `<IdleReturnModal />` so it surfaces on chromeless routes too
+  (menubar, public invoice).
+
+Migrated callsites:
+- `lib/components/TimeEntryEditor.svelte` (delete time entry)
+- `routes/settings/tasks/+page.svelte` (delete activity type)
+- `routes/invoices/[id]/+page.svelte` (remove line, void invoice,
+  delete payment)
+- `routes/expenses/+page.svelte` (delete expense)
+- `routes/expenses/recurring/+page.svelte` (delete recurring)
+- `routes/expenses/mileage/+page.svelte` (delete mileage)
+
+A grep for `confirm(` outside `confirm.svelte.ts` should return
+zero hits — that's the regression guard.
+
+### 12.2 Public invoice view shows Paid status
+
+The `/i/[token]` page rendered "Total due" even for fully-paid
+invoices because the public endpoint
+(`pb_hooks/cron.pb.js` → `GET /api/timebill/public-invoice/:token`)
+never queried the `payments` collection. Sum payments in the hook
+and expose `paid_cents` + `balance_cents` on the response. The page
+shows a PAID/Void/Overdue badge in the header and renders
+`Total / Paid / Balance` rows in the summary panel when payments
+exist. (Collection name is `payments` — not `invoice_payments`.)
+
+### 12.3 `/settings` index redirect
+
+The sidebar links to `/settings/workspace`, but typing `/settings`
+directly used to land on the SvelteKit 404. Added a one-shot
+redirect page at `routes/settings/+page.svelte` that calls
+`goto('/settings/workspace', { replaceState: true })` on mount.
+
+### 12.4 Chrome walkthrough — pages exercised
+
+Walked every authenticated route plus public/login pages:
+Dashboard, Time, Clients (+ New client create), Projects,
+Expenses (+ delete confirm), Expenses/Mileage, Expenses/Recurring,
+Invoices, Invoice detail (+ Void confirm), Reports, Tax,
+Settings/Workspace, Settings/Activity types, Settings/Billing,
+Settings/Email, Settings/Import, Menubar popover, Public invoice
+(`/i/<token>`), Login. All render and the confirm dialog appears
+on every Delete/Void action.
+
+### 12.5 Known limitations not fixed in this phase
+
+- The SPA can get visibly stuck on the 404 page if you client-side
+  navigate away from it; a full page reload always recovers. Not
+  reproducible reliably; rooted in SvelteKit's error boundary.
+- Public invoice view doesn't render a list of recorded payments
+  (intentional — keep client-visible page minimal). Only the
+  totals row and the PAID badge surface payment state.
