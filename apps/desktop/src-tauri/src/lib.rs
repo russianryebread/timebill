@@ -19,11 +19,14 @@ fn round_window_corners(window: &WebviewWindow, radius: f64) {
         return;
     }
     unsafe {
+        // Force the window content view layer to be the visible shape.
+        let _: () = msg_send![ns_window_ptr, setOpaque: false];
+        let _: () = msg_send![ns_window_ptr, setHasShadow: true];
+
         let content_view: *mut AnyObject = msg_send![ns_window_ptr, contentView];
         if content_view.is_null() {
             return;
         }
-        // Force the content view to be layer-backed first.
         let _: () = msg_send![content_view, setWantsLayer: true];
         let layer: *mut AnyObject = msg_send![content_view, layer];
         if layer.is_null() {
@@ -31,11 +34,31 @@ fn round_window_corners(window: &WebviewWindow, radius: f64) {
         }
         let _: () = msg_send![layer, setCornerRadius: radius];
         let _: () = msg_send![layer, setMasksToBounds: true];
+
+        // Tell macOS to recompute the drop shadow against the new shape.
+        let _: () = msg_send![ns_window_ptr, invalidateShadow];
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn refresh_window_shadow(window: &WebviewWindow) {
+    use objc2::msg_send;
+    use objc2::runtime::AnyObject;
+    if let Ok(p) = window.ns_window() {
+        let ns_window_ptr = p as *mut AnyObject;
+        if !ns_window_ptr.is_null() {
+            unsafe {
+                let _: () = msg_send![ns_window_ptr, invalidateShadow];
+            }
+        }
     }
 }
 
 #[cfg(not(target_os = "macos"))]
 fn round_window_corners(_window: &WebviewWindow, _radius: f64) {}
+
+#[cfg(not(target_os = "macos"))]
+fn refresh_window_shadow(_window: &WebviewWindow) {}
 
 const TRAY_ID: &str = "timebill-tray";
 
@@ -90,6 +113,8 @@ fn show_menubar_at(window: &WebviewWindow, tray_rect: &Rect) {
     anchor_to_tray(window, tray_rect);
     let _ = window.show();
     let _ = window.set_focus();
+    // Position changed → re-mask the shadow to fit the rounded shape.
+    refresh_window_shadow(window);
 }
 
 fn toggle_menubar_at(window: &WebviewWindow, tray_rect: &Rect) {

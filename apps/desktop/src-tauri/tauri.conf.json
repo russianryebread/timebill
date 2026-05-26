@@ -33,7 +33,7 @@
         "skipTaskbar": true,
         "visible": false,
         "focus": true,
-        "shadow": false
+        "shadow": true
       }
     ],
     "security": {

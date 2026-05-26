@@ -155,6 +155,42 @@
     window.location.href = '/time';
   }
 
+  /**
+   * "+ New" button — starts a fresh timer on the most-recently-used project
+   * (and task). Falls back to opening the main app's /time page if we have
+   * no recent activity to seed from.
+   */
+  async function newEntry() {
+    if (timer.running) {
+      // A timer is already running; opening the main app is a safer action
+      // than silently auto-stopping/starting a different one from a tray click.
+      return openMainApp();
+    }
+    // Pull the most recent entry across the whole workspace (any day, any
+    // project) to seed project+task; fall back to today's groups for speed.
+    let seedProject: string | undefined;
+    let seedTask: string | undefined;
+    if (selectedDayGroups.length > 0 && selectedDayGroups[0]?.project) {
+      seedProject = selectedDayGroups[0].project.id;
+      seedTask = selectedDayGroups[0].task?.id;
+    } else if (workspace.current) {
+      try {
+        const recent = await pb.collection('time_entries').getList(1, 1, {
+          filter: `workspace = "${workspace.current.id}" && ended_at != ""`,
+          sort: '-started_at'
+        });
+        const row = recent.items[0] as any;
+        if (row) {
+          seedProject = row.project;
+          seedTask = row.task || undefined;
+        }
+      } catch (_) {}
+    }
+    if (!seedProject) return openMainApp();
+    await timer.start({ projectId: seedProject, taskId: seedTask });
+    await load();
+  }
+
   onMount(() => {
     if (workspace.current) load();
   });
@@ -172,12 +208,12 @@
       <span class="font-medium">{fmtDate(selectedDay)}</span>
       <div class="flex items-center gap-2">
         <button
-          class="rounded p-1 hover:bg-white/10"
+          class="flex h-6 w-6 items-center justify-center rounded-full hover:bg-white/10"
           onclick={() => (weekOffset = weekOffset - 1)}
           aria-label="Previous week"
         >‹</button>
         <button
-          class="rounded p-1 hover:bg-white/10"
+          class="flex h-6 w-6 items-center justify-center rounded-full hover:bg-white/10"
           onclick={() => (weekOffset = weekOffset + 1)}
           aria-label="Next week"
         >›</button>
