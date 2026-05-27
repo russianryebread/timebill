@@ -1,0 +1,26 @@
+services:
+  timebill:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: timebill:latest
+    container_name: timebill
+    restart: unless-stopped
+    ports:
+      # host:container. Change the left side if 8090 is already taken on
+      # your LAN box (e.g. "9000:8090" → http://lan-host:9000).
+      - "8090:8090"
+    volumes:
+      # All persistent state lives here: SQLite DB + uploaded receipts +
+      # generated invoice PDFs. Named volume so Docker manages perms;
+      # back it up with the recipe in deploy/README.md.
+      - pb_data:/app/pb_data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8090/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  pb_data:

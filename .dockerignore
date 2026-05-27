@@ -1,0 +1,39 @@
+# Don't drag host artifacts into the build context. The Dockerfile
+# builds the SPA from source inside stage 1 and downloads its own
+# PocketBase binary, so anything you've built locally is just bloat.
+
+# Node + framework caches
+node_modules/
+**/node_modules/
+**/.svelte-kit/
+**/.vite/
+
+# Web build outputs (rebuilt inside the image)
+apps/web/build/
+
+# Tauri build outputs (massive Rust target dir)
+apps/desktop/src-tauri/target/
+apps/desktop/src-tauri/gen/
+
+# PocketBase runtime state — never ship the local DB into the image
+pocketbase/pb_data/
+pocketbase/pb_public/
+pocketbase/pocketbase
+pocketbase/pocketbase.exe
+
+# Local dev / git noise
+.git/
+.gitignore
+.DS_Store
+**/.DS_Store
+*.log
+.env
+.env.*
+
+# Editor / IDE
+.vscode/
+.idea/
+
+# CI / docs that don't need to ship
+README.md
+plan.md

@@ -1049,3 +1049,68 @@ month and tightened the month-navigation UX:
 23. **Hover tooltip.** Hover any in-month cell → native tooltip
     reads `Thu, May 21, 2026 — 3:15 tracked`. Out-of-month spill
     cells are dimmed and tooltip says "no time tracked."
+
+## Phase 17 — Deploy scaffolding (Docker, LAN host)
+
+The whole backend is one Go binary (PocketBase) serving both the
+JSON API and the SvelteKit SPA from `pb_public/`. Deployment is
+correspondingly tiny: one container, one volume, no proxy needed
+on a trusted LAN.
+
+### 17.1 Files
+
+```
+deploy/
+├── Dockerfile          # multi-stage, multi-arch (amd64 + arm64)
+├── docker-compose.yml  # service + named volume + healthcheck
+└── README.md           # first-run, backups, updates, multi-arch, LAN client
+.dockerignore           # repo-root; keeps host build artifacts out
+```
+
+### 17.2 Dockerfile design
+
+- **Stage 1 (`node:20-alpine`):** pinned to `$BUILDPLATFORM` so the
+  SPA build doesn't run under QEMU emulation when cross-building
+  for another arch. Runs `npm ci` (caches on package files), then
+  `npm run build:web` → emits `apps/web/build/`.
+- **Stage 2 (`alpine:3.20`):** downloads the official PocketBase
+  release for `$TARGETARCH` (amd64 or arm64; `PB_VERSION=0.22.21`
+  build-arg pinned to match the local dev binary), unzips it,
+  copies in `pb_migrations/` + `pb_hooks/`, and lands the SPA
+  build under `/app/pb_public/`. Final image is ~25 MB.
+- Declares `/app/pb_data` as a volume so callers know it's the
+  only stateful path. `HEALTHCHECK` hits `/api/health` every 30 s.
+- `CMD ["./pocketbase", "serve", "--http=0.0.0.0:8090"]`.
+
+### 17.3 compose
+
+Named `pb_data` volume (Docker-managed perms beat bind-mount
+quirks for SQLite). `restart: unless-stopped`. Port 8090
+published to the host. Compose project name (`deploy`) becomes
+the volume prefix, so the real volume is `deploy_pb_data` — the
+README spells this out for backup recipes.
+
+### 17.4 First-run / updates / backups
+
+`docker compose up -d --build` from `deploy/` does everything.
+Updates are `git pull && docker compose up -d --build` —
+migrations replay on container start, data is preserved across
+rebuilds. Backups are a one-liner `tar` against the named
+volume; restore is the mirror. README points at Litestream as
+the continuous-replication option for those who want it.
+
+### 17.5 Smoke test (run during this phase)
+
+Built the image locally (`docker build -f deploy/Dockerfile`),
+ran it on `:18090` against a throwaway named volume:
+- `GET /api/health` → 200 ✓
+- `GET /` → 200 (2.6 KB SPA shell) ✓
+
+### 17.6 Known follow-ups
+
+- The Tauri Mac app still defaults to `http://127.0.0.1:8090`.
+  To point at a LAN host you currently `localStorage.setItem('pb_url', 'http://lan-host:8090')`
+  from DevTools. Worth surfacing as a Settings → Server panel field.
+- HTTPS is intentionally out of scope for LAN — README mentions
+  the Caddy/Traefik/Cloudflare-Tunnel pattern if you ever expose
+  this to the internet.
