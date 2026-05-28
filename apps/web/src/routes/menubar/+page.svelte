@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-  import { pb, toPbDate } from '$lib/pb';
+  import { pb, toPbDate, pbUrl } from '$lib/pb';
+  import { auth } from '$lib/auth.svelte';
+  import { goto } from '$app/navigation';
   import { workspace } from '$lib/workspace.svelte';
   import { timer } from '$lib/timer.svelte';
   import { api } from '$lib/api';
@@ -362,8 +364,38 @@
     }
   });
 
-  onMount(() => {
+  // ---- Settings panel ----
+  let settingsOpen = $state(false);
+  let urlDraft = $state(pbUrl);
+  let appVersion = $state('—');
+  let hasUrlOverride = $state(false);
+
+  function saveUrl() {
+    const trimmed = urlDraft.trim();
+    if (!trimmed) return;
+    localStorage.setItem('pb_url', trimmed);
+    window.location.reload();
+  }
+
+  function clearUrl() {
+    localStorage.removeItem('pb_url');
+    window.location.reload();
+  }
+
+  async function signOut() {
+    auth.logOut();
+    await goto('/login');
+  }
+
+  onMount(async () => {
     if (workspace.current) load();
+    hasUrlOverride = !!localStorage.getItem('pb_url');
+    try {
+      if (typeof (window as any).__TAURI_INTERNALS__ !== 'undefined') {
+        const { getVersion } = await import('@tauri-apps/api/app');
+        appVersion = await getVersion();
+      }
+    } catch (_) {}
   });
 
   $effect(() => {
@@ -556,15 +588,26 @@
       <span class="icon-[ph--plus]" aria-hidden="true"></span>
       New
     </button>
-    <button
-      type="button"
-      class="flex items-center gap-1 rounded px-1.5 py-1 text-xs text-slate-500 hover:bg-slate-50 hover:text-brand-700"
-      onclick={openMainApp}
-      title="Open the full TimeBill app"
-    >
-      <span class="icon-[ph--arrow-square-out]" aria-hidden="true"></span>
-      Open app
-    </button>
+    <div class="flex items-center gap-0.5">
+      <button
+        type="button"
+        class="flex h-7 w-7 items-center justify-center rounded text-slate-500 hover:bg-slate-50 hover:text-brand-700"
+        onclick={() => (settingsOpen = true)}
+        title="Settings"
+        aria-label="Settings"
+      >
+        <span class="icon-[ph--gear-duotone]" aria-hidden="true"></span>
+      </button>
+      <button
+        type="button"
+        class="flex items-center gap-1 rounded px-1.5 py-1 text-xs text-slate-500 hover:bg-slate-50 hover:text-brand-700"
+        onclick={openMainApp}
+        title="Open the full TimeBill app"
+      >
+        <span class="icon-[ph--arrow-square-out]" aria-hidden="true"></span>
+        Open app
+      </button>
+    </div>
 
     {#if pickerOpen}
       <!-- Click-shield: closes the picker if the user clicks anywhere
@@ -630,6 +673,64 @@
       </div>
     {/if}
   </footer>
+
+  {#if settingsOpen}
+    <div class="fixed inset-0 z-50 flex flex-col bg-white">
+      <header class="bg-brand-800 px-4 py-3 text-white">
+        <div class="flex items-center gap-2 text-sm">
+          <button
+            class="flex h-6 w-6 items-center justify-center rounded-full hover:bg-white/10"
+            onclick={() => (settingsOpen = false)}
+            aria-label="Back"
+          >‹</button>
+          <span class="font-medium">Settings</span>
+        </div>
+      </header>
+
+      <div class="menubar-scroll flex-1 overflow-auto p-4">
+        <div class="space-y-5">
+          <div>
+            <label class="mb-1 block text-xs font-medium text-slate-700">Server URL</label>
+            <div class="flex gap-2">
+              <input
+                type="url"
+                bind:value={urlDraft}
+                placeholder="http://..."
+                class="min-w-0 flex-1 rounded border border-slate-300 px-2 py-1.5 text-xs focus:border-brand-500 focus:outline-none"
+              />
+              <button
+                type="button"
+                onclick={saveUrl}
+                class="shrink-0 rounded bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700"
+              >Save</button>
+            </div>
+            {#if hasUrlOverride}
+              <button
+                type="button"
+                onclick={clearUrl}
+                class="mt-1.5 text-xs text-slate-400 hover:text-slate-600"
+              >Reset to default</button>
+            {/if}
+          </div>
+
+          <hr class="border-slate-100" />
+
+          <button
+            type="button"
+            onclick={signOut}
+            class="flex items-center gap-1.5 rounded px-2 py-1.5 text-sm text-red-600 hover:bg-red-50"
+          >
+            <span class="icon-[ph--sign-out-duotone]" aria-hidden="true"></span>
+            Sign out
+          </button>
+        </div>
+      </div>
+
+      <footer class="border-t border-slate-200 px-4 py-2 text-center text-[11px] text-slate-400">
+        TimeBill {appVersion}
+      </footer>
+    </div>
+  {/if}
 </div>
 
 <style>

@@ -10,7 +10,7 @@ import { browser } from '$app/environment';
  *    so the user can point the desktop app at a remote PocketBase later.
  */
 function resolvePbUrl(): string {
-  if (!browser) return 'http://127.0.0.1:8090';
+  if (!browser) return 'http://timebill.hoshor.me:8090';
   const override = localStorage.getItem('pb_url');
   if (override) return override;
   const proto = window.location.protocol;
@@ -21,12 +21,13 @@ function resolvePbUrl(): string {
     typeof (window as any).__TAURI_INTERNALS__ !== 'undefined' ||
     proto === 'tauri:' ||
     proto === 'tauri-http:';
-  if (isTauri) return 'http://127.0.0.1:8090';
+  if (isTauri) return 'http://timebill.hoshor.me:8090';
   // Web build served by PocketBase itself — same origin.
   return `${proto}//${window.location.hostname}:${window.location.port || 8090}`;
 }
 
-export const pb = new PocketBase(resolvePbUrl());
+export const pbUrl = resolvePbUrl();
+export const pb = new PocketBase(pbUrl);
 
 pb.autoCancellation(false);
 

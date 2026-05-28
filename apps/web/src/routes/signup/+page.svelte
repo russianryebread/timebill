@@ -1,12 +1,32 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { auth } from '$lib/auth.svelte';
   import { workspace } from '$lib/workspace.svelte';
   import { goto } from '$app/navigation';
+  import { pbUrl } from '$lib/pb';
 
   let email = $state('');
   let password = $state('');
   let error = $state('');
   let submitting = $state(false);
+
+  let isTauri = $state(false);
+  let serverOpen = $state(false);
+  let urlDraft = $state(pbUrl);
+
+  onMount(() => {
+    isTauri = typeof (window as any).__TAURI_INTERNALS__ !== 'undefined';
+    if (isTauri && !localStorage.getItem('pb_url')) {
+      serverOpen = true;
+    }
+  });
+
+  function saveServerUrl() {
+    const trimmed = urlDraft.trim();
+    if (!trimmed) return;
+    localStorage.setItem('pb_url', trimmed);
+    window.location.reload();
+  }
 
   async function submit(e: SubmitEvent) {
     e.preventDefault();
@@ -86,6 +106,42 @@
         Already have an account?
         <a href="/login" class="font-medium text-brand-600 hover:underline">Sign in</a>
       </p>
+
+      {#if isTauri}
+      <div class="border-t border-slate-100 pt-2">
+        <button
+          type="button"
+          onclick={() => (serverOpen = !serverOpen)}
+          class="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600"
+        >
+          <span
+            class={serverOpen ? 'icon-[ph--caret-down]' : 'icon-[ph--caret-right]'}
+            aria-hidden="true"
+          ></span>
+          Server
+        </button>
+        {#if serverOpen}
+          <div class="mt-2">
+            <label class="block text-xs text-slate-600">
+              Server URL
+              <div class="mt-1 flex gap-2">
+                <input
+                  type="url"
+                  bind:value={urlDraft}
+                  placeholder="http://..."
+                  class="min-w-0 flex-1 rounded border border-slate-300 px-2 py-1.5 text-xs focus:border-brand-500 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onclick={saveServerUrl}
+                  class="shrink-0 rounded bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700"
+                >Save</button>
+              </div>
+            </label>
+          </div>
+        {/if}
+      </div>
+      {/if}
     </form>
   </div>
 </div>
