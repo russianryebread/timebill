@@ -15,7 +15,19 @@
     try {
       await auth.signUp(email, password);
       await workspace.load();
-      goto('/');
+
+      // Detect if we're in the menubar window and redirect accordingly
+      let redirectPath = '/';
+      if (typeof (window as any).__TAURI_INTERNALS__ !== 'undefined') {
+        try {
+          const { getCurrentWindow } = await import('@tauri-apps/api/window');
+          const label = getCurrentWindow().label;
+          if (label === 'menubar') {
+            redirectPath = '/menubar';
+          }
+        } catch (_) {}
+      }
+      goto(redirectPath);
     } catch (err) {
       error = err instanceof Error ? err.message : 'Signup failed';
     } finally {
