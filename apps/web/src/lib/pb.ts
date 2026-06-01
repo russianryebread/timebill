@@ -1,6 +1,8 @@
 import PocketBase from 'pocketbase';
 import { browser } from '$app/environment';
 
+const URL = 'https://timebill.hoshor.me';
+
 /**
  * Resolve the PocketBase base URL:
  *  - SSR  → 127.0.0.1:8090 (build-time only; we use adapter-static).
@@ -10,7 +12,7 @@ import { browser } from '$app/environment';
  *    so the user can point the desktop app at a remote PocketBase later.
  */
 function resolvePbUrl(): string {
-  if (!browser) return 'https://timebill.hoshor.me';
+  if (!browser) return URL;
   const override = localStorage.getItem('pb_url');
   if (override) return override;
   const proto = window.location.protocol;
@@ -21,7 +23,7 @@ function resolvePbUrl(): string {
     typeof (window as any).__TAURI_INTERNALS__ !== 'undefined' ||
     proto === 'tauri:' ||
     proto === 'tauri-http:';
-  if (isTauri) return 'https://timebill.hoshor.me';
+  if (isTauri) return URL;
   // Web build served by PocketBase itself — same origin.
   return `${proto}//${window.location.hostname}:${window.location.port || 8090}`;
 }

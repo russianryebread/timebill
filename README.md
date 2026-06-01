@@ -42,6 +42,15 @@ npm run dev:web
 npm run dev:desktop
 ```
 
+## Deployment
+
+```sh
+git pull
+npm run build:web:to-pb
+cd deploy/
+sudo docker compose up -d --build
+```
+
 PocketBase admin UI: <http://127.0.0.1:8090/_/>
 Web app (via Vite/HMR): <http://127.0.0.1:5173>
 Web app (served by PocketBase, after `build:web:to-pb`): <http://127.0.0.1:8090>
