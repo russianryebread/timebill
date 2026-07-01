@@ -28,7 +28,7 @@
 
   let timerInitialized = false;
   $effect(() => {
-    if (auth.isLoggedIn && !workspace.current && !workspace.loading) {
+    if (auth.isLoggedIn && !workspace.loaded && !workspace.loading) {
       workspace.load().then(() => {
         if (!timerInitialized) {
           timer.init();
@@ -43,7 +43,6 @@
   });
 
   onMount(async () => {
-    if (auth.isLoggedIn) workspace.load();
     // Hooks up the Tauri `idle-detected` event listener — silently no-ops
     // outside the Tauri shell, so safe to call in the web build.
     idle.init();

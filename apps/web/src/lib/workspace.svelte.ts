@@ -12,10 +12,12 @@ export type Workspace = {
 class WorkspaceState {
   current = $state<Workspace | null>(null);
   loading = $state(false);
+  loaded = $state(false);
 
   async load() {
     if (!auth.isLoggedIn) {
       this.current = null;
+      this.loaded = true;
       return;
     }
     this.loading = true;
@@ -27,6 +29,7 @@ class WorkspaceState {
       this.current = (list.items[0] as Workspace | undefined) ?? null;
     } finally {
       this.loading = false;
+      this.loaded = true;
     }
   }
 }

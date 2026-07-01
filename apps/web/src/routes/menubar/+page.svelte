@@ -36,6 +36,11 @@
     return s;
   }
 
+  function goToToday() {
+    weekOffset = 0;
+    selectedDay = new Date();
+  }
+
   let weekStart = $derived.by(() => {
     const d = new Date();
     d.setDate(d.getDate() + weekOffset * 7);
@@ -420,7 +425,15 @@
   <!-- Banded header -->
   <header class="bg-brand-800 px-4 py-3 text-white">
     <div class="flex items-center justify-between text-sm">
-      <span class="font-medium">{fmtDate(selectedDay)}</span>
+      <div class="flex items-center gap-2">
+        <span class="font-medium">{fmtDate(selectedDay)}</span>
+        <button
+            class="flex h-6 w-6 items-center justify-center rounded-full hover:bg-white/10"
+            onclick={() => goToToday()}
+            aria-label="Go To Today"
+            title="Go To Today"
+        >□</button>
+      </div>
       <div class="flex items-center gap-2">
         <button
           class="flex h-6 w-6 items-center justify-center rounded-full hover:bg-white/10"
