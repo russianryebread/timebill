@@ -89,6 +89,7 @@
       })) as unknown as Entry[];
     } finally {
       loading = false;
+      pushTray();
     }
   }
 
@@ -128,6 +129,26 @@
     )
   );
   let weekTotal = $derived(dayTotals.reduce((a, b) => a + b, 0));
+
+  // Sum of all COMPLETED entries for the currently-running project on
+  // the current day — pushed to the Rust tick thread so the tray shows
+  // the daily aggregate, not just the current segment.
+  function computeDailyBase(): number {
+    if (!timer.running) return 0;
+    const today = new Date();
+    return entries
+      .filter(
+        (e) =>
+          e.project === timer.running!.project &&
+          !!e.ended_at &&
+          sameDay(new Date(e.started_at), today)
+      )
+      .reduce((sum, e) => sum + durationMs(e), 0);
+  }
+
+  function pushTray() {
+    timer.pushTimerState(computeDailyBase());
+  }
 
   let entriesForSelectedDay = $derived.by(() =>
     entries

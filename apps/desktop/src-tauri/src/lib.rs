@@ -1,5 +1,6 @@
+use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use tauri::{
     image::Image,
@@ -7,6 +8,30 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Emitter, Manager, PhysicalPosition, Rect, WebviewWindow, WindowEvent,
 };
+
+/// State the frontend pushes so the Rust tick thread can update the tray
+/// title independently of webview throttling.
+#[derive(Debug, Clone, Default)]
+struct TimerTickState {
+    /// `Date.now()` of the running timer's `started_at`, or `None` if idle.
+    running_started_ms: Option<i64>,
+    /// Sum of completed (non-running) entries for the running project today,
+    /// in milliseconds.
+    daily_base_ms: i64,
+}
+
+/// Compact "menu-bar friendly" label: "Xh Ym" or "Ym". Mirrors the JS
+/// `compactElapsed` in `timer.svelte.ts`.
+fn compact_elapsed(ms: i64) -> String {
+    let total_minutes = (ms.max(0) / 60_000) as i64;
+    let h = total_minutes / 60;
+    let m = total_minutes % 60;
+    if h > 0 {
+        format!("{}h {}m", h, m)
+    } else {
+        format!("{}m", m)
+    }
+}
 
 #[cfg(target_os = "macos")]
 fn round_window_corners(window: &WebviewWindow, radius: f64) {
@@ -103,6 +128,24 @@ fn make_recording_dot_icon() -> Image<'static> {
     Image::new_owned(buf, SIZE, SIZE)
 }
 
+/// JS-callable: push the running timer state so the Rust tick thread can
+/// compute the correct tray title even when webviews are throttled.
+///
+/// - `running_started_ms`: `Date.now()` of the running timer's start, or
+///   `null`/omitted when no timer is running.
+/// - `daily_base_ms`: total completed time (ms) for the running project
+///   today, excluding the currently-running entry.
+#[tauri::command]
+fn push_timer_state(
+    state: tauri::State<'_, Arc<Mutex<TimerTickState>>>,
+    running_started_ms: Option<i64>,
+    daily_base_ms: Option<i64>,
+) {
+    let mut s = state.lock().unwrap();
+    s.running_started_ms = running_started_ms;
+    s.daily_base_ms = daily_base_ms.unwrap_or(0);
+}
+
 /// JS-callable: update the menu-bar text shown next to the tray icon.
 /// While a timer is running, the JS layer pushes "5m" / "1h 28m" labels and
 /// we swap the tray icon for a small red dot (`make_recording_dot_icon`),
@@ -129,6 +172,52 @@ fn set_tray_title(app: AppHandle, title: String) {
         let _ = tray.set_icon(Some(make_recording_dot_icon()));
     }
 }
+/// Spawn a background thread that ticks every second and updates the tray
+/// title using the state pushed by the frontend. Immune to webview timer
+/// throttling because it runs in a native OS thread.
+fn spawn_tray_tick(app: AppHandle, state: Arc<Mutex<TimerTickState>>) {
+    thread::spawn(move || {
+        let mut last_title = String::new();
+        loop {
+            thread::sleep(Duration::from_secs(1));
+            let (started, base) = {
+                let s = state.lock().unwrap();
+                (s.running_started_ms, s.daily_base_ms)
+            };
+            let title = if let Some(started_ms) = started {
+                let now_ms = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_millis() as i64;
+                let elapsed = (now_ms - started_ms).max(0);
+                compact_elapsed(base + elapsed)
+            } else {
+                String::new()
+            };
+            if title == last_title {
+                continue;
+            }
+            last_title = title.clone();
+
+            let tray = match app.tray_by_id(TRAY_ID) {
+                Some(t) => t,
+                None => continue,
+            };
+            if title.is_empty() {
+                let _ = tray.set_title(None::<&str>);
+                let _ = tray.set_icon_as_template(true);
+                if let Some(icon) = app.default_window_icon() {
+                    let _ = tray.set_icon(Some(icon.clone()));
+                }
+            } else {
+                let _ = tray.set_title(Some(title.as_str()));
+                let _ = tray.set_icon_as_template(false);
+                let _ = tray.set_icon(Some(make_recording_dot_icon()));
+            }
+        }
+    });
+}
+
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 use user_idle::UserIdle;
 
@@ -253,6 +342,14 @@ pub fn run() {
             // Register global shortcut.
             app.global_shortcut().register(toggle_shortcut)?;
 
+            // Managed state so the tick thread and the JS push_timer_state
+            // command share the same timer snapshot.
+            let timer_state = Arc::new(Mutex::new(TimerTickState::default()));
+            app.manage(timer_state.clone());
+
+            // Kick off the native tray tick — immune to webview throttling.
+            spawn_tray_tick(app.handle().clone(), timer_state);
+
             // Kick off the idle watcher (emits `idle-detected` events).
             spawn_idle_watcher(app.handle().clone());
 
@@ -301,7 +398,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![set_tray_title])
+        .invoke_handler(tauri::generate_handler![push_timer_state, set_tray_title])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

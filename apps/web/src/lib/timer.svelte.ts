@@ -2,18 +2,6 @@ import { pb } from './pb';
 import { workspace } from './workspace.svelte';
 import { auth } from './auth.svelte';
 
-/**
- * Compact "menu-bar friendly" label for the tray title. Strips seconds; uses
- * "Xh Ym" once an hour has passed, otherwise just "Ym".
- */
-function compactElapsed(ms: number): string {
-  const totalMinutes = Math.floor(Math.max(0, ms) / 60_000);
-  const h = Math.floor(totalMinutes / 60);
-  const m = totalMinutes % 60;
-  if (h > 0) return `${h}h ${m}m`;
-  return `${m}m`;
-}
-
 export type TimeEntry = {
   id: string;
   workspace: string;
@@ -62,38 +50,37 @@ class TimerState {
     if (this.tickHandle) return;
     this.tickHandle = setInterval(() => {
       this.now = Date.now();
-      this.pushTrayTitle();
     }, 1000);
   }
 
   /**
-   * Push the running timer's elapsed time to the macOS tray title so the user
-   * can glance at the menu bar and see they're tracking. Cleared when no
-   * timer is running. No-op outside Tauri.
+   * Push the running timer's state to the Rust tick thread so the tray
+   * title shows the correct daily aggregate for the running project.
+   * Call this whenever entries change (load, edit, delete, realtime
+   * subscription fires).
+   *
+   * @param dailyBaseMs Sum of all COMPLETED (ended_at != "") entries for
+   * the running project today, in milliseconds. Pass 0 when no timer is
+   * running — that clears the tray.
    */
-  private trayTitleLast = '';
-  /**
-   * Push the running timer's elapsed (minute-precision) to the macOS tray
-   * title. Updates only when the minute changes, so each timer second-tick
-   * is essentially free. Cleared (and icon restored) when no timer is
-   * running. No-op outside Tauri.
-   */
-  private async pushTrayTitle() {
+  async pushTimerState(dailyBaseMs: number) {
     if (typeof window === 'undefined') return;
     if (typeof (window as any).__TAURI_INTERNALS__ === 'undefined') return;
-    // Just the elapsed time as plain text. The Rust side swaps the tray
-    // icon for a small red "recording" dot whenever this title is
-    // non-empty, so the menu bar reads `[•] 5m` without any glyph
-    // tricks in JS. Empty string clears both.
-    const next = this.running ? compactElapsed(this.elapsedMs) : '';
-    if (next === this.trayTitleLast) return;
-    this.trayTitleLast = next;
     try {
       const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('set_tray_title', { title: next });
+      if (this.running) {
+        await invoke('push_timer_state', {
+          running_started_ms: new Date(this.running.started_at).getTime(),
+          daily_base_ms: Math.round(dailyBaseMs)
+        });
+      } else {
+        await invoke('push_timer_state', {
+          running_started_ms: null,
+          daily_base_ms: 0
+        });
+      }
     } catch (_) {
-      // Silently ignore — likely running in the web build or the command
-      // isn't registered (older Tauri build before the title feature shipped).
+      // Silently ignore — running in web build or command not registered.
     }
   }
 
@@ -130,7 +117,9 @@ class TimerState {
     // fire and re-sync, but the UI shouldn't wait for the round trip.
     this.running = created as unknown as TimeEntry;
     this.now = Date.now();
-    this.pushTrayTitle();
+    // Push initial state — daily base is 0 since we just started (any
+    // prior completed entries will be added when the caller reloads).
+    this.pushTimerState(0);
     return created;
   }
 
@@ -148,8 +137,7 @@ class TimerState {
     // realtime subscription is slow/disconnected.
     if (this.running?.id === id) {
       this.running = null;
-      this.trayTitleLast = '__force__';
-      this.pushTrayTitle();
+      this.pushTimerState(0);
     }
     try {
       await pb.collection('time_entries').update(id, {

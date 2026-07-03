@@ -83,6 +83,7 @@
       })) as unknown as Entry[];
     } finally {
       loading = false;
+      pushTray();
     }
   }
 
@@ -94,6 +95,26 @@
         .reduce((sum, e) => sum + durationMs(e, timer.now), 0)
     )
   );
+
+  // Sum of all COMPLETED entries for the currently-running project on
+  // the current day — this is the "daily base" we push to the Rust tick
+  // thread so the tray shows the aggregate, not just the current segment.
+  function computeDailyBase(): number {
+    if (!timer.running) return 0;
+    const today = new Date();
+    return entries
+      .filter(
+        (e) =>
+          e.project === timer.running!.project &&
+          !!e.ended_at &&
+          sameDay(new Date(e.started_at), today)
+      )
+      .reduce((sum, e) => sum + durationMs(e, timer.now), 0);
+  }
+
+  function pushTray() {
+    timer.pushTimerState(computeDailyBase());
+  }
 
   // Entries on the selected day, with the running timer (if any and started
   // on the selected day) at the top. The active row gets a green highlight;
@@ -170,6 +191,7 @@
       }
       delete drafts[e.id];
       await load();
+      pushTray();
     } catch (err) {
       console.warn('[menubar] failed to update duration', err);
     }
@@ -199,6 +221,7 @@
       });
     }
     await load();
+    pushTray();
   }
 
   async function openMainApp() {
@@ -331,6 +354,7 @@
     await timer.start({ projectId, taskId });
     lastUsedProjectId = projectId;
     await load();
+    pushTray();
   }
 
   function onPickerKey(ev: KeyboardEvent) {
