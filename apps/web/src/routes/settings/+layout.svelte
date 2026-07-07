@@ -4,7 +4,7 @@
 
   const tabs = [
     { href: '/settings/workspace', label: 'Workspace' },
-    { href: '/settings/tasks', label: 'Activity types' },
+    { href: '/settings/tasks', label: 'Activity' },
     { href: '/settings/billing', label: 'Billing' },
     { href: '/settings/email', label: 'Email' },
     { href: '/settings/import', label: 'Import' }
@@ -22,7 +22,7 @@
     {#each tabs as t}
       <a
         href={t.href}
-        class="border-b-2 px-4 py-2 text-sm font-medium transition
+        class="border-b-2 px-2 sm:px-4 py-2 text-sm font-medium transition
           {isActive(t.href)
             ? 'border-brand-800 text-brand-800'
             : 'border-transparent text-slate-600 hover:text-slate-900'}"

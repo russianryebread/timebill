@@ -65,20 +65,20 @@
   <h1 class="text-2xl font-bold text-slate-900">Dashboard</h1>
   <p class="mt-1 text-sm text-slate-600">This week at a glance.</p>
 
-  <section class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-    <div class="rounded-xl border border-slate-200 bg-white p-5">
+  <section class="mt-6 gap-4 grid-cols-2 md:grid-cols-4 hidden sm:grid">
+    <div class="rounded-xl border border-slate-200 bg-white p-3 md-p5">
       <div class="text-xs font-medium uppercase tracking-wider text-slate-500">Week hours</div>
       <div class="mt-2 font-mono text-3xl font-semibold text-brand-800">{formatHours(weekHours)}</div>
     </div>
-    <div class="rounded-xl border border-slate-200 bg-white p-5">
+    <div class="rounded-xl border border-slate-200 bg-white p-3 md-p5">
       <div class="text-xs font-medium uppercase tracking-wider text-slate-500">Week billable</div>
       <div class="mt-2 font-mono text-3xl font-semibold text-brand-800">{formatUSD(weekBillableCents)}</div>
     </div>
-    <div class="rounded-xl border border-slate-200 bg-white p-5">
+    <div class="rounded-xl border border-slate-200 bg-white p-3 md-p5">
       <div class="text-xs font-medium uppercase tracking-wider text-slate-500">Outstanding A/R</div>
       <div class="mt-2 font-mono text-3xl font-semibold text-brand-800">{formatUSD(outstandingCents)}</div>
     </div>
-    <div class="rounded-xl border border-slate-200 bg-white p-5">
+    <div class="rounded-xl border border-slate-200 bg-white p-3 md-p5">
       <div class="text-xs font-medium uppercase tracking-wider text-slate-500">Active projects</div>
       <div class="mt-2 text-3xl font-semibold text-brand-800">
         {activeProjectCount}
@@ -90,7 +90,7 @@
   {#if activeProjectCount > 0}
     <!-- Time tracker card -->
     <section class="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white">
-      <div class="max-h-[32rem] overflow-auto">
+      <div class="max-h-128 overflow-auto">
         <TimeTracker />
       </div>
     </section>
