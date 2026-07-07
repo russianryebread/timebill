@@ -10,7 +10,6 @@
 
   type NavItem = { href: string; label: string; icon: string; disabled?: boolean };
   const navItems: NavItem[] = [
-    { href: '/time', label: 'Time', icon: 'icon-[ph--clock-duotone]' },
     { href: '/dashboard', label: 'Dashboard', icon: 'icon-[ph--squares-four-duotone]' },
     { href: '/clients', label: 'Clients', icon: 'icon-[ph--users-three-duotone]' },
     { href: '/projects', label: 'Projects', icon: 'icon-[ph--folders-duotone]' },
@@ -22,7 +21,6 @@
   ];
 
   function isActive(href: string) {
-    if (href === '/time') return $page.url.pathname === '/time';
     if (href === '/dashboard') return $page.url.pathname === '/dashboard';
     return $page.url.pathname.startsWith(href);
   }

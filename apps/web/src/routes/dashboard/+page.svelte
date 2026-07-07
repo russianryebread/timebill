@@ -3,6 +3,7 @@
   import { pb, toPbDate } from '$lib/pb';
   import { workspace } from '$lib/workspace.svelte';
   import { formatUSD, formatHours, hoursDecimal } from '@timebill/shared/money';
+  import TimeTracker from '$lib/components/TimeTracker.svelte';
 
   let weekHours = $state(0);
   let weekBillableCents = $state(0);
@@ -86,12 +87,22 @@
     </div>
   </section>
 
-  <section class="mt-8 rounded-xl border border-slate-200 bg-white p-6">
-    <h2 class="font-semibold text-slate-900">Get started</h2>
-    <ol class="mt-3 space-y-1 text-sm text-slate-600">
-      <li>1. <a href="/clients" class="text-brand-600 hover:underline">Add a client</a></li>
-      <li>2. <a href="/projects" class="text-brand-600 hover:underline">Create a project</a> with an hourly rate</li>
-      <li>3. <a href="/" class="text-brand-600 hover:underline">Start a timer</a> on the time page</li>
-    </ol>
-  </section>
+  {#if activeProjectCount > 0}
+    <!-- Time tracker card -->
+    <section class="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <div class="max-h-[32rem] overflow-auto">
+        <TimeTracker />
+      </div>
+    </section>
+  {:else}
+    <!-- Getting started -->
+    <section class="mt-8 rounded-xl border border-slate-200 bg-white p-6">
+      <h2 class="font-semibold text-slate-900">Get started</h2>
+      <ol class="mt-3 space-y-1 text-sm text-slate-600">
+        <li>1. <a href="/clients" class="text-brand-600 hover:underline">Add a client</a></li>
+        <li>2. <a href="/projects" class="text-brand-600 hover:underline">Create a project</a> with an hourly rate</li>
+        <li>3. <a href="/time" class="text-brand-600 hover:underline">Start a timer</a> on the time page</li>
+      </ol>
+    </section>
+  {/if}
 </div>

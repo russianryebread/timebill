@@ -27,6 +27,9 @@
       // Desktop → dashboard, mobile → time tracking.
       const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
       goto(isMobile ? '/time' : '/dashboard');
+    } else if (auth.isLoggedIn && path === '/time' && typeof window !== 'undefined' && window.innerWidth >= 1024) {
+      // Desktop: /time redirects to /dashboard (TimeTracker is a card there).
+      goto('/dashboard');
     } else if (auth.isLoggedIn && publicPaths.includes(path) && path !== '/') {
       goto('/');
     }
