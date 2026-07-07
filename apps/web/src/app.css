@@ -51,3 +51,12 @@ body {
     padding-right: env(safe-area-inset-right);
   }
 }
+
+/* Make tables horizontally scrollable on narrow screens. */
+@media (max-width: 639px) {
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}

@@ -474,7 +474,7 @@
   };
 </script>
 
-<div class="mx-auto max-w-6xl px-8 py-8">
+<div class="mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
   <a href="/invoices" class="text-xs text-brand-600 hover:underline">← All invoices</a>
 
   {#if loading || !invoice}

@@ -10,8 +10,8 @@
 
   type NavItem = { href: string; label: string; icon: string; disabled?: boolean };
   const navItems: NavItem[] = [
-    { href: '/', label: 'Dashboard', icon: 'icon-[ph--squares-four-duotone]' },
-    { href: '/time', label: 'Time', icon: 'icon-[ph--clock-duotone]' },
+    { href: '/', label: 'Time', icon: 'icon-[ph--clock-duotone]' },
+    { href: '/dashboard', label: 'Dashboard', icon: 'icon-[ph--squares-four-duotone]' },
     { href: '/clients', label: 'Clients', icon: 'icon-[ph--users-three-duotone]' },
     { href: '/projects', label: 'Projects', icon: 'icon-[ph--folders-duotone]' },
     { href: '/expenses', label: 'Expenses', icon: 'icon-[ph--currency-dollar-duotone]' },
@@ -23,6 +23,7 @@
 
   function isActive(href: string) {
     if (href === '/') return $page.url.pathname === '/';
+    if (href === '/dashboard') return $page.url.pathname === '/dashboard';
     return $page.url.pathname.startsWith(href);
   }
 
@@ -123,9 +124,11 @@
         onclick={() => sidebar.toggle()}
         aria-label="Open menu"
       ><span class="icon-[ph--list-duotone] text-lg" aria-hidden="true"></span></button>
-      <span class="truncate text-sm font-medium text-slate-800">
+      <span class="truncate text-sm font-semibold text-slate-800">
         {#if $page.url.pathname === '/'}
-          Home
+          Time
+        {:else if $page.url.pathname === '/dashboard'}
+          Dashboard
         {:else if $page.url.pathname === '/time'}
           Time
         {:else if $page.url.pathname.startsWith('/clients')}
