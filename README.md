@@ -2,6 +2,10 @@
 
 Unified time tracking, expenses, invoicing, and tax estimation for hourly contractors.
 
+<img width="1024" alt="Screenshot 2026-07-09 at 15-02-28" src="https://github.com/user-attachments/assets/9f24cf8b-2b51-44c8-b351-597a65c322db" />
+<img width="500" alt="Screenshot 2026-07-09 at 15-03-42" src="https://github.com/user-attachments/assets/cf10c0d7-e35e-41fb-b12e-33afa294c644" />
+
+
 ## Stack
 
 - **Web client:** SvelteKit (static SPA), TypeScript, Tailwind
