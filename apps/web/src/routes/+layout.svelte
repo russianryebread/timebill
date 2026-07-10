@@ -4,6 +4,7 @@
   import { workspace } from '$lib/workspace.svelte';
   import { timer } from '$lib/timer.svelte';
   import { idle } from '$lib/idle.svelte';
+  import { realtime } from '$lib/realtime.svelte';
   import AppShell from '$lib/components/AppShell.svelte';
   import IdleReturnModal from '$lib/components/IdleReturnModal.svelte';
   import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
@@ -41,12 +42,14 @@
       workspace.load().then(() => {
         if (!timerInitialized) {
           timer.init();
+          realtime.init();
           timerInitialized = true;
         }
       });
     }
     if (!auth.isLoggedIn && timerInitialized) {
       timer.dispose();
+      realtime.dispose();
       timerInitialized = false;
     }
   });
@@ -72,6 +75,7 @@
 
   onDestroy(() => {
     timer.dispose();
+    realtime.dispose();
     idle.dispose();
   });
 </script>

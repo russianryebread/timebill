@@ -1,6 +1,7 @@
 import { pb } from './pb';
 import { workspace } from './workspace.svelte';
 import { auth } from './auth.svelte';
+import { realtime } from './realtime.svelte';
 
 export type TimeEntry = {
   id: string;
@@ -96,10 +97,9 @@ class TimerState {
 
   private async subscribe() {
     if (this.unsubscribe) this.unsubscribe();
-    const fn = await pb.collection('time_entries').subscribe('*', () => {
+    this.unsubscribe = await realtime.subscribe('time_entries', '*', () => {
       this.loadRunning();
     });
-    this.unsubscribe = fn;
   }
 
   async start(opts: { projectId: string; taskId?: string; description?: string }) {
