@@ -227,7 +227,7 @@
         console.warn('[timetracker] failed to open main window', err);
       }
     }
-    window.location.href = '/time';
+    window.location.href = '/dashboard';
   }
 
   // ---- "New timer" project picker ----
