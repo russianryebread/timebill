@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
+  import { onMount, onDestroy, tick } from 'svelte';
   import { pb, toPbDate, pbUrl } from '$lib/pb';
   import { auth } from '$lib/auth.svelte';
   import { goto } from '$app/navigation';
@@ -394,8 +394,18 @@
     }
   }
 
+  let unloadFns: (() => void)[] = [];
+
+  onDestroy(() => {
+    for (const fn of unloadFns) fn();
+  });
+
   onMount(async () => {
     if (workspace.current) load();
+    // Menubar: start on today when no timer is running.
+    if (isMenubar && !timer.running) {
+      goToToday();
+    }
     hasUrlOverride = !!localStorage.getItem('pb_url');
     try {
       if (typeof (window as any).__TAURI_INTERNALS__ !== 'undefined') {
@@ -403,6 +413,18 @@
         appVersion = await getVersion();
       }
     } catch (_) {}
+
+    // When the menubar comes back into view (e.g. after sleep across
+    // midnight), snap back to today if there's no running timer.
+    if (isMenubar) {
+      const onShow = () => {
+        if (!timer.running && !sameDay(selectedDay, new Date())) {
+          goToToday();
+        }
+      };
+      document.addEventListener('visibilitychange', onShow);
+      unloadFns.push(() => document.removeEventListener('visibilitychange', onShow));
+    }
   });
 
   $effect(() => {

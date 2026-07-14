@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { pb, toPbDate } from '$lib/pb';
   import { workspace } from '$lib/workspace.svelte';
+  import { realtime } from '$lib/realtime.svelte';
   import { formatUSD, formatHours, hoursDecimal } from '@timebill/shared/money';
   import DayGantt from '$lib/components/DayGantt.svelte';
   import TimeTracker from '$lib/components/TimeTracker.svelte';
@@ -88,7 +89,33 @@
     outstandingCents = invoices.reduce((sum, inv) => sum + (inv.total_cents ?? 0), 0);
   }
 
-  onMount(() => { loadStats(); });
+  let unsubs: (() => void)[] = [];
+  let reloadTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function scheduleReload() {
+    if (reloadTimer) clearTimeout(reloadTimer);
+    reloadTimer = setTimeout(() => {
+      loadStats();
+      reloadTimer = null;
+    }, 500);
+  }
+
+  onMount(async () => {
+    loadStats();
+    const [u1, u2, u3, u4] = await Promise.all([
+      realtime.subscribe('time_entries', '*', () => scheduleReload()),
+      realtime.subscribe('clients', '*', () => scheduleReload()),
+      realtime.subscribe('projects', '*', () => scheduleReload()),
+      realtime.subscribe('invoices', '*', () => scheduleReload()),
+    ]);
+    unsubs = [u1, u2, u3, u4];
+  });
+
+  onDestroy(() => {
+    if (reloadTimer) clearTimeout(reloadTimer);
+    for (const u of unsubs) u();
+  });
+
   $effect(() => { if (workspace.current) loadStats(); });
 </script>
 
