@@ -32,7 +32,7 @@ RUN npm run build:web
 # ─── Stage 2: minimal runtime ───────────────────────────────────────────
 FROM alpine:3.20
 ARG TARGETARCH
-ARG PB_VERSION=0.22.21
+ARG PB_VERSION=0.39.7
 
 # Pinned PocketBase release. Update PB_VERSION when you bump the local
 # binary; migrations are version-tolerant but staying in lockstep keeps

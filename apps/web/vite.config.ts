@@ -4,7 +4,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 import { readFileSync } from 'fs';
 
-const gitSha = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim();
+const gitSha = execSync('git rev-parse --short HEAD || echo "0000000"', { encoding: 'utf-8' }).trim();
 
 const rootPkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf-8'));
 const appVersion = rootPkg.version as string;
