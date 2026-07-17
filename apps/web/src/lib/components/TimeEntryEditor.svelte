@@ -162,35 +162,26 @@
   role="dialog"
   aria-modal="true"
 >
-  <form onsubmit={save} class="w-full max-w-md space-y-3 rounded-xl bg-white p-6 shadow-xl">
-    <div class="flex items-center justify-between gap-3">
-      <h2 class="text-lg font-semibold text-slate-900">
-        {locked ? 'Time entry (locked)' : 'Edit time entry'}
-      </h2>
-      {#if locked}
-        <a
-          href={`/invoices/${initial.invoice}`}
-          class="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 hover:bg-amber-200"
-          onclick={onClose}
-        >
-          <span class="icon-[ph--lock-key-duotone] text-sm" aria-hidden="true"></span>
-          {invoiceNumber || 'Invoiced'}
-          <span class="icon-[ph--arrow-up-right]" aria-hidden="true"></span>
-        </a>
-      {/if}
-    </div>
-
+  <form onsubmit={save} class="w-full max-w-sm space-y-1.5 rounded-xl bg-white p-3 shadow-xl">
     {#if locked}
-      <p class="rounded bg-amber-50 px-3 py-2 text-xs text-amber-900">
-        This entry is attached to an invoice and can't be edited. Remove it
-        from the invoice's line items first.
-      </p>
+      <div class="flex items-center gap-2 rounded bg-amber-50 px-2 py-1.5">
+        {#if invoiceNumber}
+          <a href={`/invoices/${initial.invoice}`} onclick={onClose}
+            class="flex items-center gap-1 text-xs font-medium text-amber-800 hover:text-amber-900">
+            <span class="icon-[ph--lock-key-duotone]" aria-hidden="true"></span>
+            {invoiceNumber}
+            <span class="icon-[ph--arrow-up-right]" aria-hidden="true"></span>
+          </a>
+        {:else}
+          <span class="text-xs text-amber-800"><span class="icon-[ph--lock-key-duotone]" aria-hidden="true"></span> Invoiced</span>
+        {/if}
+      </div>
     {/if}
 
     <!-- Primary: hours-first input -->
     <label class="block">
-      <span class="text-sm font-medium text-slate-700">Hours</span>
-      <div class="mt-1 flex items-center gap-2">
+      <span class="text-xs font-medium text-slate-700">Hours</span>
+      <div class="mt-0.5 flex items-center gap-2">
         <input
           inputmode="decimal"
           step="0.05"
@@ -199,48 +190,48 @@
           disabled={locked}
           bind:value={hoursInput}
           oninput={onHoursChange}
-          class="w-24 rounded border border-slate-300 px-3 py-2 text-right font-mono text-sm focus:border-brand-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
+          class="w-20 rounded border border-slate-300 px-2 py-1.5 text-right font-mono text-sm focus:border-brand-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
         />
-        <span class="text-sm text-slate-500">decimal hours · adjusts end time</span>
+        <span class="text-xs text-slate-500">decimal hours</span>
       </div>
     </label>
 
     <!-- Disclosure: clock-time fine-tuning -->
-    <details bind:open={showClockTimes} class="rounded-md border border-slate-200">
-      <summary class="cursor-pointer select-none px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">
+    <details bind:open={showClockTimes} class="rounded border border-slate-200 text-xs">
+      <summary class="cursor-pointer select-none px-2 py-1.5 text-slate-600 hover:bg-slate-50">
         Adjust clock times
       </summary>
-      <div class="grid grid-cols-2 gap-3 border-t border-slate-100 p-3">
+      <div class="grid grid-cols-2 gap-2 border-t border-slate-100 p-2">
         <label class="block">
-          <span class="text-xs text-slate-500">Start</span>
+          <span class="text-[10px] text-slate-500">Start</span>
           <input
             type="datetime-local"
             required
             disabled={locked}
             bind:value={form.started_at}
-            class="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
+            class="mt-0.5 w-full rounded border border-slate-300 px-2 py-1 text-xs focus:border-brand-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
           />
         </label>
         <label class="block">
-          <span class="text-xs text-slate-500">End</span>
+          <span class="text-[10px] text-slate-500">End</span>
           <input
             type="datetime-local"
             required
             disabled={locked}
             bind:value={form.ended_at}
-            class="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
+            class="mt-0.5 w-full rounded border border-slate-300 px-2 py-1 text-xs focus:border-brand-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
           />
         </label>
       </div>
     </details>
 
     <label class="block">
-      <span class="text-sm text-slate-700">Project</span>
+      <span class="text-xs font-medium text-slate-700">Project</span>
       <select
         required
         disabled={locked}
         bind:value={form.project}
-        class="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
+        class="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-xs focus:border-brand-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
       >
         {#each projects as p}
           <option value={p.id}>
@@ -251,13 +242,13 @@
     </label>
 
     <label class="block">
-      <span class="text-sm text-slate-700">Activity</span>
+      <span class="text-xs font-medium text-slate-700">Activity</span>
       <select
         disabled={locked}
         bind:value={form.task}
-        class="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
+        class="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-xs focus:border-brand-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
       >
-        <option value="">No activity</option>
+        <option value="">—</option>
         {#each tasks as t}
           <option value={t.id}>{t.name}</option>
         {/each}
@@ -265,39 +256,39 @@
     </label>
 
     <label class="block">
-      <span class="text-sm text-slate-700">Description</span>
+      <span class="text-xs font-medium text-slate-700">Description</span>
       <input
         disabled={locked}
         bind:value={form.description}
-        class="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
+        class="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-xs focus:border-brand-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
       />
     </label>
 
-    <label class="flex items-center gap-2 text-sm">
+    <label class="flex items-center gap-1.5 text-xs">
       <input type="checkbox" disabled={locked} bind:checked={form.billable} />
       Billable
     </label>
 
     {#if error}
-      <p class="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+      <p class="rounded bg-red-50 px-2 py-1.5 text-xs text-red-700">{error}</p>
     {/if}
 
-    <div class="flex items-center justify-between pt-2">
-      <div>
-        {#if !locked}
-          <button
-            type="button"
-            class="rounded px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-            onclick={remove}
-          >
-            Delete
-          </button>
-        {/if}
-      </div>
-      <div class="flex gap-2">
+    <div class="flex items-center justify-between">
+      {#if !locked}
         <button
           type="button"
-          class="rounded px-4 py-2 text-sm text-slate-600 hover:bg-slate-100"
+          class="rounded px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+          onclick={remove}
+        >
+          Delete
+        </button>
+      {:else}
+        <span></span>
+      {/if}
+      <div class="flex gap-1.5">
+        <button
+          type="button"
+          class="rounded px-3 py-1 text-xs text-slate-600 hover:bg-slate-100"
           onclick={onClose}
         >
           {locked ? 'Close' : 'Cancel'}
@@ -305,10 +296,10 @@
         {#if !locked}
           <button
             type="submit"
-            class="rounded bg-brand-800 px-4 py-2 text-sm font-medium text-white hover:bg-brand-900 disabled:opacity-50"
+            class="rounded bg-brand-800 px-3 py-1 text-xs font-medium text-white hover:bg-brand-900 disabled:opacity-50"
             disabled={saving}
           >
-            {saving ? 'Saving…' : 'Save changes'}
+            {saving ? 'Saving…' : 'Save'}
           </button>
         {/if}
       </div>

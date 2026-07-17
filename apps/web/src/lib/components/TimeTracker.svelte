@@ -7,6 +7,7 @@
   import { timer } from '$lib/timer.svelte';
   import { api } from '$lib/api';
   import { formatHours } from '@timebill/shared/money';
+  import { confirmAction } from '$lib/confirm.svelte';
   import TimeEntryEditor from './TimeEntryEditor.svelte';
 
   let { isMenubar = false }: { isMenubar?: boolean } = $props();
@@ -31,6 +32,7 @@
   let selectedDay = $state(new Date());
   let loading = $state(true);
   let editingId = $state<string | null>(null);
+  let menuEntryId = $state<string | null>(null);
 
   function startOfWeek(d: Date): Date {
     const day = d.getDay();
@@ -195,6 +197,25 @@
     if (ev.key === 'Escape') {
       delete drafts[e.id];
       (ev.target as HTMLInputElement).blur();
+    }
+  }
+
+  async function openEditor(e: Entry) {
+    menuEntryId = null;
+    await loadMeta();
+    editingId = e.id;
+  }
+
+  async function deleteEntry(e: Entry) {
+    menuEntryId = null;
+    if (!(await confirmAction({ message: 'Delete this time entry?', detail: 'This permanently removes the entry.', confirmLabel: 'Delete' }))) return;
+    try {
+      await pb.collection('time_entries').delete(e.id);
+      delete drafts[e.id];
+      await load();
+      pushTray();
+    } catch (err) {
+      console.warn('[timetracker] failed to delete entry', err);
     }
   }
 
@@ -544,13 +565,33 @@
               <span class="text-slate-400">m</span>
             </div>
 
-            <button type="button"
-              onclick={() => (editingId = e.id)}
-              class="flex h-7 w-7 shrink-0 items-center justify-center rounded text-slate-400 hover:text-brand-700 disabled:opacity-30"
-              aria-label="Edit entry" title="Edit entry"
-              disabled={isLocked}>
-              <span class="icon-[ph--pencil-simple-line-duotone]" aria-hidden="true"></span>
-            </button>
+            <div class="relative">
+              <button type="button"
+                onclick={() => (menuEntryId = menuEntryId === e.id ? null : e.id)}
+                class="flex h-7 w-7 shrink-0 items-center justify-center rounded text-slate-400 hover:text-brand-700 disabled:opacity-30"
+                aria-label="More actions" title="More actions"
+                disabled={isLocked}>
+                <span class="icon-[ph--dots-three-vertical]" aria-hidden="true"></span>
+              </button>
+              {#if menuEntryId === e.id}
+                <button type="button" class="fixed inset-0 z-30 cursor-default"
+                  aria-label="Close menu" onclick={() => (menuEntryId = null)}></button>
+                <div class="absolute right-0 top-0 z-40 w-32 overflow-hidden rounded-md border border-slate-200 bg-white py-1 shadow-lg">
+                  <button type="button"
+                    onclick={() => openEditor(e)}
+                    class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-50">
+                    <span class="icon-[ph--pencil-simple-line]" aria-hidden="true"></span>
+                    Edit
+                  </button>
+                  <button type="button"
+                    onclick={() => deleteEntry(e)}
+                    class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-red-600 hover:bg-red-50">
+                    <span class="icon-[ph--trash-simple]" aria-hidden="true"></span>
+                    Delete
+                  </button>
+                </div>
+              {/if}
+            </div>
 
             <button type="button"
               disabled={isLocked || (!isRunning && !!timer.running)}
