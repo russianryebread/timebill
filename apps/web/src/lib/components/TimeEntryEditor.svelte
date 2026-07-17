@@ -62,7 +62,6 @@
   let hoursInput = $state(
     initial.ended_at ? hoursBetween(initial.started_at, initial.ended_at).toFixed(2) : '0.00'
   );
-  let showClockTimes = $state(false);
 
   // Edits to clock-time inputs propagate into hours.
   // Edits to hours propagate into ended_at.
@@ -178,10 +177,10 @@
       </div>
     {/if}
 
-    <!-- Primary: hours-first input -->
-    <label class="block">
-      <span class="text-xs font-medium text-slate-700">Hours</span>
-      <div class="mt-0.5 flex items-center gap-2">
+    <div class="grid grid-cols-4 gap-2">
+      <!-- Primary: hours-first input -->
+      <label class="block">
+        <span class="text-xs text-slate-700">Decimal</span>
         <input
           inputmode="decimal"
           step="0.05"
@@ -190,70 +189,66 @@
           disabled={locked}
           bind:value={hoursInput}
           oninput={onHoursChange}
-          class="w-20 rounded border border-slate-300 px-2 py-1.5 text-right font-mono text-sm focus:border-brand-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
+          class="mt-0.5 w-18 rounded border border-slate-300 px-2 py-1 text-right font-mono text-sm focus:border-brand-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
         />
-        <span class="text-xs text-slate-500">decimal hours</span>
-      </div>
-    </label>
+      </label>
 
-    <!-- Disclosure: clock-time fine-tuning -->
-    <details bind:open={showClockTimes} class="rounded border border-slate-200 text-xs">
-      <summary class="cursor-pointer select-none px-2 py-1.5 text-slate-600 hover:bg-slate-50">
-        Adjust clock times
-      </summary>
-      <div class="grid grid-cols-2 gap-2 border-t border-slate-100 p-2">
+      <div class="col-span-3 grid grid-cols-2 gap-2">
+        <!-- clock-time fine-tuning -->
         <label class="block">
-          <span class="text-[10px] text-slate-500">Start</span>
+          <span class="text-xs text-slate-700">Start</span>
           <input
             type="datetime-local"
             required
             disabled={locked}
             bind:value={form.started_at}
-            class="mt-0.5 w-full rounded border border-slate-300 px-2 py-1 text-xs focus:border-brand-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
+            class="mt-0.5 w-full rounded border border-slate-300 px-2 py-1 text-sm focus:border-brand-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
           />
         </label>
         <label class="block">
-          <span class="text-[10px] text-slate-500">End</span>
+          <span class="text-xs text-slate-700">End</span>
           <input
             type="datetime-local"
             required
             disabled={locked}
             bind:value={form.ended_at}
-            class="mt-0.5 w-full rounded border border-slate-300 px-2 py-1 text-xs focus:border-brand-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
+            class="mt-0.5 w-full rounded border border-slate-300 px-2 py-1 text-sm focus:border-brand-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
           />
         </label>
       </div>
-    </details>
+    </div>
 
-    <label class="block">
-      <span class="text-xs font-medium text-slate-700">Project</span>
-      <select
-        required
-        disabled={locked}
-        bind:value={form.project}
-        class="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-xs focus:border-brand-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
-      >
-        {#each projects as p}
-          <option value={p.id}>
-            {p.expand?.client?.name ? `${p.expand.client.name} — ` : ''}{p.name}
-          </option>
-        {/each}
-      </select>
-    </label>
+    <div class="grid grid-cols-2 gap-2 border-t border-slate-100">
+      <label class="block">
+        <span class="text-xs font-medium text-slate-700">Project</span>
+        <select
+          required
+          disabled={locked}
+          bind:value={form.project}
+          class="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-xs focus:border-brand-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
+        >
+          {#each projects as p}
+            <option value={p.id}>
+              {p.expand?.client?.name ? `${p.expand.client.name} — ` : ''}{p.name}
+            </option>
+          {/each}
+        </select>
+      </label>
 
-    <label class="block">
-      <span class="text-xs font-medium text-slate-700">Activity</span>
-      <select
-        disabled={locked}
-        bind:value={form.task}
-        class="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-xs focus:border-brand-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
-      >
-        <option value="">—</option>
-        {#each tasks as t}
-          <option value={t.id}>{t.name}</option>
-        {/each}
-      </select>
-    </label>
+      <label class="block">
+        <span class="text-xs font-medium text-slate-700">Activity</span>
+        <select
+          disabled={locked}
+          bind:value={form.task}
+          class="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-xs focus:border-brand-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
+        >
+          <option value="">—</option>
+          {#each tasks as t}
+            <option value={t.id}>{t.name}</option>
+          {/each}
+        </select>
+      </label>
+    </div>
 
     <label class="block">
       <span class="text-xs font-medium text-slate-700">Description</span>
