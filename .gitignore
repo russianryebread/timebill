@@ -18,3 +18,4 @@ pocketbase/pocketbase
 pocketbase/pb_data/
 pocketbase/pb_public/
 reasonix.toml
+.reasonix

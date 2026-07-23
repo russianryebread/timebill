@@ -5,18 +5,18 @@
  * Starting a new timer auto-stops any currently-running entry.
  * Also snapshots the resolved hourly rate when an entry is stopped.
  *
- * NOTE: PocketBase runs each hook callback in its own isolated Goja context,
- * so top-level helpers are NOT in scope. Helpers must live inside the callback.
+ * NOTE: PocketBase v0.23+ runs each hook callback in its own isolated Goja
+ * context, so top-level helpers are NOT in scope. Helpers must be inlined.
  */
-onRecordBeforeCreateRequest((e) => {
+onRecordCreateRequest((e) => {
   const r = e.record;
   const endedAt = r.get('ended_at');
   if (endedAt && String(endedAt).trim() !== '' && String(endedAt) !== '0001-01-01 00:00:00.000Z') {
+    e.next();
     return; // not a running timer
   }
 
-  const dao = $app.dao();
-  const running = dao.findRecordsByFilter(
+  const running = $app.findRecordsByFilter(
     'time_entries',
     `workspace = "${r.get('workspace')}" && ended_at = ""`,
     '-started_at',
@@ -25,18 +25,20 @@ onRecordBeforeCreateRequest((e) => {
 
   for (const entry of running) {
     entry.set('ended_at', new DateTime());
-    snapshotRate(dao, entry);
-    dao.saveRecord(entry);
+    snapshotRate(entry);
+    $app.save(entry);
   }
 
-  function snapshotRate(dao, entry) {
+  e.next();
+
+  function snapshotRate(entry) {
     const projectId = entry.get('project');
     const taskId = entry.get('task');
 
     let taskRate = null;
     if (taskId) {
       try {
-        const task = dao.findRecordById('tasks', taskId);
+        const task = $app.findRecordById('tasks', taskId);
         const rate = task.get('rate_cents');
         if (typeof rate === 'number' && rate > 0) taskRate = rate;
       } catch (_) {}
@@ -45,7 +47,7 @@ onRecordBeforeCreateRequest((e) => {
     let projectRate = null;
     let clientId = null;
     try {
-      const project = dao.findRecordById('projects', projectId);
+      const project = $app.findRecordById('projects', projectId);
       const rate = project.get('rate_cents');
       if (typeof rate === 'number' && rate > 0) projectRate = rate;
       clientId = project.get('client');
@@ -54,7 +56,7 @@ onRecordBeforeCreateRequest((e) => {
     let clientDefault = 0;
     if (clientId) {
       try {
-        const client = dao.findRecordById('clients', clientId);
+        const client = $app.findRecordById('clients', clientId);
         clientDefault = client.get('default_rate_cents') || 0;
       } catch (_) {}
     }
@@ -63,9 +65,9 @@ onRecordBeforeCreateRequest((e) => {
   }
 }, 'time_entries');
 
-onRecordBeforeUpdateRequest((e) => {
+onRecordUpdateRequest((e) => {
   const r = e.record;
-  const original = r.originalCopy();
+  const original = r.original();
 
   // Lock: entries attached to an invoice can't be edited via the API. Only
   // exception is clearing the invoice field itself (used when removing a line
@@ -96,17 +98,22 @@ onRecordBeforeUpdateRequest((e) => {
 
   const wasRunning = !original.get('ended_at') || String(original.get('ended_at')).trim() === '';
   const isStopping = wasRunning && !!r.get('ended_at') && String(r.get('ended_at')).trim() !== '';
-  if (!isStopping) return;
-  if (r.get('rate_cents_snapshot')) return;
+  if (!isStopping) {
+    e.next();
+    return;
+  }
+  if (r.get('rate_cents_snapshot')) {
+    e.next();
+    return;
+  }
 
-  const dao = $app.dao();
   const projectId = r.get('project');
   const taskId = r.get('task');
 
   let taskRate = null;
   if (taskId) {
     try {
-      const task = dao.findRecordById('tasks', taskId);
+      const task = $app.findRecordById('tasks', taskId);
       const rate = task.get('rate_cents');
       if (typeof rate === 'number' && rate > 0) taskRate = rate;
     } catch (_) {}
@@ -115,7 +122,7 @@ onRecordBeforeUpdateRequest((e) => {
   let projectRate = null;
   let clientId = null;
   try {
-    const project = dao.findRecordById('projects', projectId);
+    const project = $app.findRecordById('projects', projectId);
     const rate = project.get('rate_cents');
     if (typeof rate === 'number' && rate > 0) projectRate = rate;
     clientId = project.get('client');
@@ -124,10 +131,12 @@ onRecordBeforeUpdateRequest((e) => {
   let clientDefault = 0;
   if (clientId) {
     try {
-      const client = dao.findRecordById('clients', clientId);
+      const client = $app.findRecordById('clients', clientId);
       clientDefault = client.get('default_rate_cents') || 0;
     } catch (_) {}
   }
 
   r.set('rate_cents_snapshot', taskRate ?? projectRate ?? clientDefault);
+
+  e.next();
 }, 'time_entries');

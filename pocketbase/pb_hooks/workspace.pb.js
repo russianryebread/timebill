@@ -5,32 +5,35 @@
  * categories, and create a default tax_settings row.
  *
  * v1 = single workspace per user; in v2 this becomes opt-in or a setup wizard.
+ *
+ * Code after e.next() runs after the user record is persisted.
  */
-onRecordAfterCreateRequest((e) => {
+onRecordCreateRequest((e) => {
+  e.next();
+
   const user = e.record;
-  const dao = $app.dao();
 
   // 1. Create workspace
-  const workspaces = dao.findCollectionByNameOrId('workspaces');
+  const workspaces = $app.findCollectionByNameOrId('workspaces');
   const ws = new Record(workspaces, {
     name: 'My Workspace',
     owner: user.id,
     default_currency: 'USD',
     tax_profile_json: {}
   });
-  dao.saveRecord(ws);
+  $app.save(ws);
 
   // 2. Membership row (rule consistency with future team support)
-  const members = dao.findCollectionByNameOrId('workspace_members');
+  const members = $app.findCollectionByNameOrId('workspace_members');
   const membership = new Record(members, {
     workspace: ws.id,
     user: user.id,
     role: 'owner'
   });
-  dao.saveRecord(membership);
+  $app.save(membership);
 
   // 3. Seed Schedule C expense categories
-  const expenseCategories = dao.findCollectionByNameOrId('expense_categories');
+  const expenseCategories = $app.findCollectionByNameOrId('expense_categories');
   const SCHEDULE_C_DEFAULTS = [
     ['Advertising', 'Line 8: Advertising'],
     ['Car & Truck', 'Line 9: Car and truck expenses'],
@@ -57,11 +60,11 @@ onRecordAfterCreateRequest((e) => {
       name,
       schedule_c_line: line
     });
-    dao.saveRecord(cat);
+    $app.save(cat);
   }
 
   // 4. Default tax settings (2026 IRS standard mileage rate placeholder = 70¢/mi)
-  const taxSettings = dao.findCollectionByNameOrId('tax_settings');
+  const taxSettings = $app.findCollectionByNameOrId('tax_settings');
   const settings = new Record(taxSettings, {
     workspace: ws.id,
     filing_status: 'single',
@@ -70,5 +73,5 @@ onRecordAfterCreateRequest((e) => {
     mileage_rate_cents_per_mile: 70,
     quarterly_safe_harbor_pct: 110
   });
-  dao.saveRecord(settings);
+  $app.save(settings);
 }, 'users');

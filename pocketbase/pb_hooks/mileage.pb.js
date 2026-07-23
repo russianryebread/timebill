@@ -7,15 +7,21 @@
  *
  * Falls back to the 2026 IRS standard rate (placeholder 70¢/mi) if tax_settings
  * isn't found.
+ *
+ * NOTE: PocketBase v0.23+ runs each hook callback in its own isolated Goja
+ * context, so top-level helpers are NOT in scope. Helpers must be inlined.
  */
-onRecordBeforeCreateRequest((e) => {
+onRecordCreateRequest((e) => {
   const r = e.record;
-  if (r.get('rate_cents_snapshot')) return;
 
-  const dao = $app.dao();
+  if (r.get('rate_cents_snapshot')) {
+    e.next();
+    return;
+  }
+
   let rate = 70;
   try {
-    const settings = dao.findFirstRecordByFilter(
+    const settings = $app.findFirstRecordByFilter(
       'tax_settings',
       `workspace = "${r.get('workspace')}"`
     );
@@ -26,4 +32,6 @@ onRecordBeforeCreateRequest((e) => {
   } catch (_) {}
 
   r.set('rate_cents_snapshot', rate);
+
+  e.next();
 }, 'mileage_entries');

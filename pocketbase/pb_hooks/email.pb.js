@@ -27,10 +27,9 @@ routerAdd('POST', '/api/timebill/invoices/:id/send-email', (c) => {
     body = $apis.requestInfo(c).data || {};
   } catch (_) {}
 
-  const dao = $app.dao();
   let invoice;
   try {
-    invoice = dao.findRecordById('invoices', id);
+    invoice = $app.findRecordById('invoices', id);
   } catch (_) {
     return c.json(404, { error: 'invoice not found' });
   }
@@ -38,7 +37,7 @@ routerAdd('POST', '/api/timebill/invoices/:id/send-email', (c) => {
   // Caller must own the workspace this invoice belongs to.
   let workspace;
   try {
-    workspace = dao.findRecordById('workspaces', invoice.get('workspace'));
+    workspace = $app.findRecordById('workspaces', invoice.get('workspace'));
   } catch (_) {
     return c.json(404, { error: 'workspace not found' });
   }
@@ -48,7 +47,7 @@ routerAdd('POST', '/api/timebill/invoices/:id/send-email', (c) => {
 
   let client;
   try {
-    client = dao.findRecordById('clients', invoice.get('client'));
+    client = $app.findRecordById('clients', invoice.get('client'));
   } catch (_) {
     return c.json(404, { error: 'client not found' });
   }
@@ -64,7 +63,10 @@ routerAdd('POST', '/api/timebill/invoices/:id/send-email', (c) => {
 
   // Public URL — fall back to host header if appUrl is unset.
   let baseUrl = $app.settings().meta.appUrl;
-  if (!baseUrl) baseUrl = c.scheme() + '://' + c.request().host;
+  if (!baseUrl) {
+    const scheme = c.request().tls ? 'https' : 'http';
+    baseUrl = scheme + '://' + c.request().host;
+  }
   const publicLink = `${baseUrl.replace(/\/+$/, '')}/i/${invoice.get('public_token')}`;
 
   const number = invoice.get('number');
@@ -123,7 +125,6 @@ routerAdd('POST', '/api/timebill/invoices/:id/send-email', (c) => {
     try {
       const fs = $app.newFilesystem();
       const path = `${invoice.collection().id}/${invoice.id}/${pdfName}`;
-      // Try the modern API first; fall back to older shapes silently.
       if (typeof fs.getFile === 'function') {
         const file = fs.getFile(path);
         message.attachments = { [pdfName]: file };
@@ -147,7 +148,7 @@ routerAdd('POST', '/api/timebill/invoices/:id/send-email', (c) => {
   if (String(invoice.get('status')) === 'draft') {
     invoice.set('status', 'sent');
     try {
-      dao.saveRecord(invoice);
+      $app.save(invoice);
     } catch (_) {}
   }
 

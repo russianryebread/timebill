@@ -9,12 +9,11 @@
  * Schedule: every day at 02:00 UTC.
  */
 cronAdd('recurring-expenses-materialize', '0 2 * * *', () => {
-  const dao = $app.dao();
   const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
   let due;
   try {
-    due = dao.findRecordsByFilter(
+    due = $app.findRecordsByFilter(
       'recurring_expenses',
       `active = true && next_run <= "${todayStr} 23:59:59.999Z"`,
       'next_run',
@@ -28,7 +27,7 @@ cronAdd('recurring-expenses-materialize', '0 2 * * *', () => {
   if (!due.length) return;
   console.log(`[cron] materializing ${due.length} recurring expenses`);
 
-  const expensesCol = dao.findCollectionByNameOrId('expenses');
+  const expensesCol = $app.findCollectionByNameOrId('expenses');
 
   for (const tpl of due) {
     try {
@@ -42,7 +41,7 @@ cronAdd('recurring-expenses-materialize', '0 2 * * *', () => {
         billable: false,
         reimbursable: false
       });
-      dao.saveRecord(exp);
+      $app.save(exp);
 
       // Advance next_run
       const cadence = String(tpl.get('cadence'));
@@ -51,7 +50,7 @@ cronAdd('recurring-expenses-materialize', '0 2 * * *', () => {
       else if (cadence === 'yearly') next.setFullYear(next.getFullYear() + 1);
       else next.setMonth(next.getMonth() + 1); // monthly default
       tpl.set('next_run', next.toISOString().slice(0, 10));
-      dao.saveRecord(tpl);
+      $app.save(tpl);
     } catch (err) {
       console.log(`[cron] failed to materialize ${tpl.id}:`, err);
     }
@@ -67,11 +66,10 @@ routerAdd('POST', '/api/timebill/run-recurring', (c) => {
   const auth = c.get('authRecord');
   if (!auth) return c.json(401, { error: 'auth required' });
 
-  const dao = $app.dao();
   const todayStr = new Date().toISOString().slice(0, 10);
 
   // Only this user's workspaces
-  const wsList = dao.findRecordsByFilter(
+  const wsList = $app.findRecordsByFilter(
     'workspaces',
     `owner = "${auth.id}"`,
     'created',
@@ -80,14 +78,14 @@ routerAdd('POST', '/api/timebill/run-recurring', (c) => {
   const wsIds = wsList.map((w) => `"${w.id}"`).join(',');
   if (!wsIds) return c.json(200, { materialized: 0 });
 
-  const due = dao.findRecordsByFilter(
+  const due = $app.findRecordsByFilter(
     'recurring_expenses',
     `active = true && next_run <= "${todayStr} 23:59:59.999Z" && workspace.id ?~ '${wsIds.replace(/"/g, '')}'`,
     'next_run',
     500
   );
 
-  const expensesCol = dao.findCollectionByNameOrId('expenses');
+  const expensesCol = $app.findCollectionByNameOrId('expenses');
   let count = 0;
   for (const tpl of due) {
     try {
@@ -101,7 +99,7 @@ routerAdd('POST', '/api/timebill/run-recurring', (c) => {
         billable: false,
         reimbursable: false
       });
-      dao.saveRecord(exp);
+      $app.save(exp);
 
       const cadence = String(tpl.get('cadence'));
       const next = new Date(todayStr);
@@ -109,7 +107,7 @@ routerAdd('POST', '/api/timebill/run-recurring', (c) => {
       else if (cadence === 'yearly') next.setFullYear(next.getFullYear() + 1);
       else next.setMonth(next.getMonth() + 1);
       tpl.set('next_run', next.toISOString().slice(0, 10));
-      dao.saveRecord(tpl);
+      $app.save(tpl);
       count++;
     } catch (err) {
       console.log(`[trigger] failed ${tpl.id}:`, err);
@@ -123,10 +121,9 @@ routerAdd('POST', '/api/timebill/run-recurring', (c) => {
  * Nightly: flip sent/viewed invoices to overdue when due_date is past.
  */
 cronAdd('invoices-mark-overdue', '0 3 * * *', () => {
-  const dao = $app.dao();
   const today = new Date().toISOString().slice(0, 10);
   try {
-    const due = dao.findRecordsByFilter(
+    const due = $app.findRecordsByFilter(
       'invoices',
       `(status = "sent" || status = "viewed") && due_date < "${today} 00:00:00.000Z"`,
       'due_date',
@@ -134,7 +131,7 @@ cronAdd('invoices-mark-overdue', '0 3 * * *', () => {
     );
     for (const inv of due) {
       inv.set('status', 'overdue');
-      dao.saveRecord(inv);
+      $app.save(inv);
     }
     if (due.length) console.log(`[cron] flipped ${due.length} invoice(s) to overdue`);
   } catch (err) {
@@ -152,16 +149,15 @@ routerAdd('GET', '/api/timebill/public-invoice/:token', (c) => {
   const token = c.pathParam('token');
   if (!token) return c.json(400, { error: 'missing token' });
 
-  const dao = $app.dao();
   let invoice;
   try {
-    invoice = dao.findFirstRecordByFilter('invoices', `public_token = "${token}"`);
+    invoice = $app.findFirstRecordByFilter('invoices', `public_token = "${token}"`);
   } catch (_) {}
   if (!invoice) return c.json(404, { error: 'not found' });
 
   let client = null;
   try {
-    const cr = dao.findRecordById('clients', invoice.get('client'));
+    const cr = $app.findRecordById('clients', invoice.get('client'));
     client = {
       id: cr.id,
       name: cr.get('name'),
@@ -172,11 +168,11 @@ routerAdd('GET', '/api/timebill/public-invoice/:token', (c) => {
 
   let workspace = null;
   try {
-    const ws = dao.findRecordById('workspaces', invoice.get('workspace'));
+    const ws = $app.findRecordById('workspaces', invoice.get('workspace'));
     workspace = { id: ws.id, name: ws.get('name') };
   } catch (_) {}
 
-  const lines = dao.findRecordsByFilter(
+  const lines = $app.findRecordsByFilter(
     'invoice_line_items',
     `invoice = "${invoice.id}"`,
     'sort_order,created',
@@ -187,7 +183,7 @@ routerAdd('GET', '/api/timebill/public-invoice/:token', (c) => {
   // "Paid" badge when the invoice is settled.
   let paidCents = 0;
   try {
-    const payments = dao.findRecordsByFilter(
+    const payments = $app.findRecordsByFilter(
       'payments',
       `invoice = "${invoice.id}"`,
       '-date',
@@ -203,7 +199,7 @@ routerAdd('GET', '/api/timebill/public-invoice/:token', (c) => {
   if (String(invoice.get('status')) === 'sent') {
     invoice.set('status', 'viewed');
     try {
-      dao.saveRecord(invoice);
+      $app.save(invoice);
     } catch (_) {}
   }
 
